@@ -16,82 +16,22 @@
       --muted: #9ca3af;
     }
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Inter', sans-serif;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; justify-content: center; padding: 40px 16px; }
+    .hub-container { max-width: 520px; width: 100%; text-align: center; }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      padding: 40px 16px;
-    }
+    .profile { margin-bottom: 30px; }
+    .profile h1 { color: var(--green); font-size: 2rem; margin-bottom: 6px; }
+    .profile p { color: var(--muted); font-size: 0.95rem; }
 
-    .hub-container {
-      max-width: 520px;
-      width: 100%;
-      text-align: center;
-    }
+    .links { display: flex; flex-direction: column; gap: 16px; margin-top: 30px; }
+    .link-card { background: var(--card); border: 1px solid #111; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.25s ease; }
+    .link-card:hover { border-color: var(--green); box-shadow: 0 0 16px rgba(0,255,102,0.2); transform: translateY(-2px); }
 
-    .profile {
-      margin-bottom: 30px;
-    }
+    .link-title { color: var(--green); font-size: 1.05rem; font-weight: 600; }
+    .link-desc { color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
 
-    .profile h1 {
-      color: var(--green);
-      font-size: 2rem;
-      margin-bottom: 6px;
-    }
-
-    .profile p {
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-
-    .links {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      margin-top: 30px;
-    }
-
-    .link-card {
-      background: var(--card);
-      border: 1px solid #111;
-      border-radius: 12px;
-      padding: 16px;
-      cursor: pointer;
-      transition: all 0.25s ease;
-    }
-
-    .link-card:hover {
-      border-color: var(--green);
-      box-shadow: 0 0 16px rgba(0,255,102,0.2);
-      transform: translateY(-2px);
-    }
-
-    .link-title {
-      color: var(--green);
-      font-size: 1.05rem;
-      font-weight: 600;
-    }
-
-    .link-desc {
-      color: var(--muted);
-      font-size: 0.85rem;
-      margin-top: 6px;
-    }
-
-    footer {
-      margin-top: 40px;
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
+    footer { margin-top: 40px; font-size: 0.8rem; color: var(--muted); }
   </style>
 </head>
 <body>
@@ -100,8 +40,8 @@
 
     <!-- PROFILE -->
     <div class="profile">
-      <h1>@smartlink</h1>
-      <p>All my important links in one place</p>
+      <h1 id="hubName">@smartlink</h1>
+      <p id="hubDesc">All my important links in one place</p>
     </div>
 
     <!-- LINKS -->
@@ -113,46 +53,74 @@
 
   </div>
 
-  <script>
-    /* ----------------------------
-       Demo link data (later from backend)
-    -----------------------------*/
-    const links = [
-      {
-        title: "Portfolio Website",
-        desc: "Check out my work & projects",
-        url: "https://example.com"
-      },
-      {
-        title: "GitHub Profile",
-        desc: "Open-source & repositories",
-        url: "https://github.com"
-      },
-      {
-        title: "Resume (PDF)",
-        desc: "Download my latest resume",
-        url: "https://example.com/resume.pdf"
+  <script type="module">
+    import { supabase } from "./assets/js/supabase.js";
+
+    // Get hub slug from URL
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get("slug") || "demo";
+
+    async function loadHub() {
+      // Fetch hub info
+      const { data: hubData, error: hubError } = await supabase
+        .from("hubs")
+        .select("*")
+        .eq("slug", slug)
+        .single();
+
+      if (hubError || !hubData) {
+        console.error(hubError);
+        document.getElementById("hubName").innerText = "Hub not found";
+        return;
       }
-    ];
 
-    const container = document.getElementById("links");
+      document.getElementById("hubName").innerText = hubData.name || "@smartlink";
+      document.getElementById("hubDesc").innerText = hubData.description || "All my important links in one place";
 
-    links.forEach(link => {
-      const div = document.createElement("div");
-      div.className = "link-card";
+      // Fetch links
+      const { data: links, error: linksError } = await supabase
+        .from("links")
+        .select("*")
+        .eq("hub_id", hubData.id)
+        .eq("is_active", true)
+        .order("position", { ascending: true });
 
-      div.innerHTML = `
-        <div class="link-title">${link.title}</div>
-        <div class="link-desc">${link.desc}</div>
-      `;
+      if (linksError) {
+        console.error(linksError);
+        return;
+      }
 
-      div.onclick = () => {
-        console.log("Clicked:", link.title); // analytics hook
-        window.open(link.url, "_blank");
-      };
+      renderLinks(links);
+    }
 
-      container.appendChild(div);
-    });
+    function renderLinks(links) {
+      const container = document.getElementById("links");
+      container.innerHTML = "";
+
+      links.forEach(link => {
+        const div = document.createElement("div");
+        div.className = "link-card";
+        div.innerHTML = `
+          <div class="link-title">${link.title}</div>
+          <div class="link-desc">${link.description || ""}</div>
+        `;
+
+        div.onclick = async () => {
+          // Track clicks
+          await supabase.from("click_events").insert({
+            link_id: link.id,
+            hub_id: link.hub_id,
+            clicked_at: new Date()
+          });
+
+          window.open(link.url, "_blank");
+        };
+
+        container.appendChild(div);
+      });
+    }
+
+    loadHub();
   </script>
 
 </body>

@@ -70,30 +70,6 @@
       cursor: pointer;
     }
 
-    .captcha-box, .otp-box {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      gap: 10px;
-    }
-
-    .captcha, .otp {
-      background: #111;
-      padding: 10px;
-      border-radius: 8px;
-      font-weight: 600;
-      color: var(--green);
-      flex: 1;
-      text-align: center;
-    }
-
-    .refresh {
-      cursor: pointer;
-      color: var(--green);
-      font-size: 0.85rem;
-    }
-
     button {
       width: 100%;
       padding: 12px;
@@ -128,56 +104,38 @@
 
     <div class="error" id="error"></div>
 
-    <!-- User ID -->
-    <input type="text" id="userid" placeholder="Email or Phone number">
+    <!-- User Email -->
+    <input type="email" id="userid" placeholder="Email" required>
 
     <!-- Password -->
     <div class="password-box">
-      <input type="password" id="password" placeholder="Password">
-      <span class="toggle" id="togglePassword" onclick="togglePassword()">Show</span>
+      <input type="password" id="password" placeholder="Password" required>
+      <span class="toggle" id="togglePassword">Show</span>
     </div>
 
     <!-- Confirm Password -->
     <div class="password-box">
-      <input type="password" id="confirmPassword" placeholder="Confirm Password">
-      <span class="toggle" id="toggleConfirm" onclick="toggleConfirmPassword()">Show</span>
+      <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+      <span class="toggle" id="toggleConfirm">Show</span>
     </div>
 
-    <!-- OTP -->
-    <div class="otp-box">
-      <div class="otp" id="otpText"></div>
-      <div class="refresh" onclick="generateOtp()">↻</div>
-    </div>
-    <input type="text" id="otpInput" placeholder="Enter OTP">
+    <button id="createBtn">Create Account</button>
 
-    <!-- CAPTCHA -->
-    <div class="captcha-box">
-      <div class="captcha" id="captchaText"></div>
-      <div class="refresh" onclick="generateCaptcha()">↻</div>
-    </div>
-    <input type="text" id="captchaInput" placeholder="Enter CAPTCHA">
-
-    <button onclick="createAccount()">Create Account</button>
-
-    <div class="link" onclick="goToLogin()">Already have an account? Login</div>
+    <div class="link" id="goLoginLink">Already have an account? Login</div>
   </div>
 
-  <script>
-    let captchaAnswer = 0;
-    let otpAnswer = 0;
+  <!-- Supabase Auth -->
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-    function generateCaptcha() {
-      const a = Math.floor(Math.random() * 10) + 1;
-      const b = Math.floor(Math.random() * 10) + 1;
-      captchaAnswer = a + b;
-      document.getElementById("captchaText").innerText = `What is ${a} + ${b}?`;
-    }
+    // ----- Supabase Setup -----
+    const supabaseUrl = ' https://nyghnjxdokohsolgxcml.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55Z2huanhkb2tvaHNvbGd4Y21sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxMzQ5MDMsImV4cCI6MjA4NDcxMDkwM30.ADyNSHr2fGpkktVJq0SXgnOm_X_gbA8P6Z5WmxUbsAo';
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    function generateOtp() {
-      otpAnswer = Math.floor(1000 + Math.random() * 9000);
-      document.getElementById("otpText").innerText = otpAnswer;
-    }
+    const errorDiv = document.getElementById("error");
 
+    // ----- Password Toggles -----
     function togglePassword() {
       const pass = document.getElementById("password");
       const toggle = document.getElementById("togglePassword");
@@ -192,53 +150,41 @@
       else { pass.type = "password"; toggle.innerText = "Show"; }
     }
 
-    function goToLogin() {
-      window.location.href = "login.html";
-    }
+    document.getElementById("togglePassword").addEventListener("click", togglePassword);
+    document.getElementById("toggleConfirm").addEventListener("click", toggleConfirmPassword);
 
-    function createAccount() {
-      const userid = document.getElementById("userid").value.trim();
+    // ----- Go to Login -----
+    document.getElementById("goLoginLink").addEventListener("click", () => {
+      window.location.href = "login.html";
+    });
+
+    // ----- Signup with Supabase -----
+    document.getElementById("createBtn").addEventListener("click", async () => {
+      errorDiv.innerText = "";
+      const email = document.getElementById("userid").value.trim();
       const password = document.getElementById("password").value.trim();
       const confirmPassword = document.getElementById("confirmPassword").value.trim();
-      const otp = document.getElementById("otpInput").value.trim();
-      const captcha = document.getElementById("captchaInput").value.trim();
-      const error = document.getElementById("error");
 
-      error.innerText = "";
-
-      if(!userid || !password || !confirmPassword || !otp || !captcha) {
-        error.innerText = "All fields are required";
+      if(!email || !password || !confirmPassword) {
+        errorDiv.innerText = "All fields are required";
         return;
       }
 
       if(password !== confirmPassword) {
-        error.innerText = "Passwords do not match";
+        errorDiv.innerText = "Passwords do not match";
         return;
       }
 
-      if(parseInt(otp) !== otpAnswer) {
-        error.innerText = "Incorrect OTP";
-        generateOtp();
-        return;
+      // ----- Supabase Signup -----
+      const { data, error } = await supabase.auth.signUp({ email, password });
+
+      if(error) {
+        errorDiv.innerText = error.message;
+      } else {
+        alert("Signup successful! Check your email to verify before login.");
+        window.location.href = "login.html";
       }
-
-      if(parseInt(captcha) !== captchaAnswer) {
-        error.innerText = "Incorrect CAPTCHA";
-        generateCaptcha();
-        return;
-      }
-
-      // Demo signup (localStorage)
-      let users = JSON.parse(localStorage.getItem("users")) || [];
-      users.push({ userid, password });
-      localStorage.setItem("users", JSON.stringify(users));
-
-      alert("Account created successfully! Redirecting to login...");
-      window.location.href = "login.html";
-    }
-
-    generateCaptcha();
-    generateOtp();
+    });
   </script>
 
 </body>
