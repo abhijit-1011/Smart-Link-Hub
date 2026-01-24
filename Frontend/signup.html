@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up | Smart Link Hub</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #000;
+      --green: #00ff66;
+      --card: #050505;
+      --text: #eaeaea;
+      --muted: #9ca3af;
+    }
+
+    * { box-sizing: border-box; font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid #111;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      animation: fadeIn 0.6s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h2 { color: var(--green); margin-bottom: 8px; }
+    p { color: var(--muted); font-size: 0.9rem; margin-bottom: 22px; }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border: none;
+      background: #111;
+      color: var(--text);
+    }
+
+    input:focus { outline: 1px solid var(--green); }
+
+    .password-box {
+      position: relative;
+    }
+
+    .toggle {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      font-size: 0.8rem;
+      color: var(--green);
+      cursor: pointer;
+    }
+
+    .captcha-box, .otp-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 10px;
+    }
+
+    .captcha, .otp {
+      background: #111;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: 600;
+      color: var(--green);
+      flex: 1;
+      text-align: center;
+    }
+
+    .refresh {
+      cursor: pointer;
+      color: var(--green);
+      font-size: 0.85rem;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: var(--green);
+      color: #000;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    .error {
+      color: red;
+      font-size: 0.8rem;
+      margin-bottom: 10px;
+    }
+
+    .link {
+      margin-top: 16px;
+      font-size: 0.85rem;
+      color: var(--green);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>Create Account</h2>
+    <p>Sign up to access your Smart Link Hub</p>
+
+    <div class="error" id="error"></div>
+
+    <!-- User ID -->
+    <input type="text" id="userid" placeholder="Email or Phone number">
+
+    <!-- Password -->
+    <div class="password-box">
+      <input type="password" id="password" placeholder="Password">
+      <span class="toggle" id="togglePassword" onclick="togglePassword()">Show</span>
+    </div>
+
+    <!-- Confirm Password -->
+    <div class="password-box">
+      <input type="password" id="confirmPassword" placeholder="Confirm Password">
+      <span class="toggle" id="toggleConfirm" onclick="toggleConfirmPassword()">Show</span>
+    </div>
+
+    <!-- OTP -->
+    <div class="otp-box">
+      <div class="otp" id="otpText"></div>
+      <div class="refresh" onclick="generateOtp()">↻</div>
+    </div>
+    <input type="text" id="otpInput" placeholder="Enter OTP">
+
+    <!-- CAPTCHA -->
+    <div class="captcha-box">
+      <div class="captcha" id="captchaText"></div>
+      <div class="refresh" onclick="generateCaptcha()">↻</div>
+    </div>
+    <input type="text" id="captchaInput" placeholder="Enter CAPTCHA">
+
+    <button onclick="createAccount()">Create Account</button>
+
+    <div class="link" onclick="goToLogin()">Already have an account? Login</div>
+  </div>
+
+  <script>
+    let captchaAnswer = 0;
+    let otpAnswer = 0;
+
+    function generateCaptcha() {
+      const a = Math.floor(Math.random() * 10) + 1;
+      const b = Math.floor(Math.random() * 10) + 1;
+      captchaAnswer = a + b;
+      document.getElementById("captchaText").innerText = `What is ${a} + ${b}?`;
+    }
+
+    function generateOtp() {
+      otpAnswer = Math.floor(1000 + Math.random() * 9000);
+      document.getElementById("otpText").innerText = otpAnswer;
+    }
+
+    function togglePassword() {
+      const pass = document.getElementById("password");
+      const toggle = document.getElementById("togglePassword");
+      if(pass.type === "password") { pass.type = "text"; toggle.innerText = "Hide"; }
+      else { pass.type = "password"; toggle.innerText = "Show"; }
+    }
+
+    function toggleConfirmPassword() {
+      const pass = document.getElementById("confirmPassword");
+      const toggle = document.getElementById("toggleConfirm");
+      if(pass.type === "password") { pass.type = "text"; toggle.innerText = "Hide"; }
+      else { pass.type = "password"; toggle.innerText = "Show"; }
+    }
+
+    function goToLogin() {
+      window.location.href = "login.html";
+    }
+
+    function createAccount() {
+      const userid = document.getElementById("userid").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const confirmPassword = document.getElementById("confirmPassword").value.trim();
+      const otp = document.getElementById("otpInput").value.trim();
+      const captcha = document.getElementById("captchaInput").value.trim();
+      const error = document.getElementById("error");
+
+      error.innerText = "";
+
+      if(!userid || !password || !confirmPassword || !otp || !captcha) {
+        error.innerText = "All fields are required";
+        return;
+      }
+
+      if(password !== confirmPassword) {
+        error.innerText = "Passwords do not match";
+        return;
+      }
+
+      if(parseInt(otp) !== otpAnswer) {
+        error.innerText = "Incorrect OTP";
+        generateOtp();
+        return;
+      }
+
+      if(parseInt(captcha) !== captchaAnswer) {
+        error.innerText = "Incorrect CAPTCHA";
+        generateCaptcha();
+        return;
+      }
+
+      // Demo signup (localStorage)
+      let users = JSON.parse(localStorage.getItem("users")) || [];
+      users.push({ userid, password });
+      localStorage.setItem("users", JSON.stringify(users));
+
+      alert("Account created successfully! Redirecting to login...");
+      window.location.href = "login.html";
+    }
+
+    generateCaptcha();
+    generateOtp();
+  </script>
+
+</body>
+</html>

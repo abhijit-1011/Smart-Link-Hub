@@ -5,10 +5,189 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Smart Link Hub Generator</title>
 
-  <link rel="stylesheet" href="assets/css/main.css">
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #000000;
+      --green: #00ff66;
+      --green-soft: rgba(0, 255, 102, 0.15);
+      --text: #eaeaea;
+      --muted: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ---------- NAVBAR ---------- */
+    .navbar {
+      width: 100%;
+      padding: 20px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--green);
+      letter-spacing: 0.5px;
+    }
+
+    .auth-buttons {
+      display: flex;
+      gap: 14px;
+    }
+
+    .nav-btn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: 1px solid var(--green);
+      background: transparent;
+      color: var(--green);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .nav-btn.signup {
+      background: var(--green);
+      color: #000;
+      font-weight: 600;
+    }
+
+    .nav-btn:hover {
+      box-shadow: 0 0 14px var(--green-soft);
+      transform: translateY(-1px);
+    }
+
+    /* ---------- MAIN ---------- */
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      padding: 40px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      text-align: center;
+      margin-top: 40px;
+      margin-bottom: 60px;
+    }
+
+    header h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 12px;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 1.1rem;
+      line-height: 1.6;
+      max-width: 720px;
+      margin: auto;
+    }
+
+    .cta {
+      margin-top: 30px;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 14px 28px;
+      border-radius: 10px;
+      border: 1px solid var(--green);
+      background: transparent;
+      color: var(--green);
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .btn.primary {
+      background: var(--green);
+      color: #000;
+      font-weight: 600;
+    }
+
+    .btn:hover {
+      box-shadow: 0 0 18px var(--green-soft);
+      transform: translateY(-2px);
+    }
+
+    section.features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 24px;
+      margin-top: 60px;
+      width: 100%;
+    }
+
+    .card {
+      background: #050505;
+      border: 1px solid #111;
+      border-radius: 14px;
+      padding: 26px;
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: var(--green);
+      box-shadow: 0 0 20px var(--green-soft);
+    }
+
+    .card h3 {
+      color: var(--green);
+      font-size: 1.3rem;
+      margin-bottom: 12px;
+    }
+
+    .card p {
+      font-size: 0.95rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    footer {
+      text-align: center;
+      margin: 80px 0 20px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    @media (max-width: 600px) {
+      header h1 {
+        font-size: 2.2rem;
+      }
+
+      .navbar {
+        padding: 16px 20px;
+      }
+    }
+  </style>
 </head>
 <body>
 
+  <!-- NAVBAR -->
   <nav class="navbar">
     <div class="logo">SmartLink</div>
     <div class="auth-buttons">
@@ -17,6 +196,7 @@
     </div>
   </nav>
 
+  <!-- MAIN CONTENT -->
   <div class="container">
 
     <header>

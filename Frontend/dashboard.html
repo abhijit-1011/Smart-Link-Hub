@@ -5,18 +5,141 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Dashboard | Smart Link Hub</title>
 
-  <link rel="stylesheet" href="assests/css/main.css">
-  <link rel="stylesheet" href="assests/css/dashboard.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #000;
+      --green: #00ff66;
+      --card: #050505;
+      --text: #eaeaea;
+      --muted: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+    }
+
+    /* NAVBAR */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 32px;
+      border-bottom: 1px solid #111;
+    }
+
+    .navbar h2 {
+      color: var(--green);
+      font-size: 1.3rem;
+    }
+
+    .navbar button {
+      background: transparent;
+      border: 1px solid var(--green);
+      color: var(--green);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      padding: 32px 20px;
+    }
+
+    h3 {
+      margin-bottom: 14px;
+      color: var(--green);
+    }
+
+    /* ADD LINK FORM */
+    .form-card {
+      background: var(--card);
+      padding: 20px;
+      border-radius: 14px;
+      margin-bottom: 30px;
+      border: 1px solid #111;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border: none;
+      background: #111;
+      color: var(--text);
+    }
+
+    input:focus {
+      outline: 1px solid var(--green);
+    }
+
+    .add-btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--green);
+      color: #000;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    /* LINK LIST */
+    .link-item {
+      background: var(--card);
+      border: 1px solid #111;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .link-info h4 {
+      color: var(--green);
+      margin-bottom: 4px;
+    }
+
+    .link-info p {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .delete-btn {
+      background: transparent;
+      border: 1px solid red;
+      color: red;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
 
+  <!-- NAVBAR -->
   <div class="navbar">
     <h2>Dashboard</h2>
     <button onclick="location.href='hub.html'">View Public Hub</button>
   </div>
 
+  <!-- MAIN -->
   <div class="container">
 
+    <!-- ADD LINK -->
     <div class="form-card">
       <h3>Add New Link</h3>
       <input type="text" id="title" placeholder="Link title" />
@@ -25,6 +148,7 @@
       <button class="add-btn" onclick="addLink()">Add Link</button>
     </div>
 
+    <!-- LINK LIST -->
     <h3>Your Links</h3>
     <div id="linkList"></div>
 
