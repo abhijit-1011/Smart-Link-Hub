@@ -4,17 +4,18 @@ import { checkRules } from "./rules.js";
 const hubContainer = document.getElementById("hub-links");
 const hubTitle = document.getElementById("hub-title");
 
-// get slug from URL
+// Get slug from URL
 const params = new URLSearchParams(window.location.search);
 const slug = params.get("slug");
 
 if (!slug) {
-  hubTitle.innerText = "Invalid hub link";
+  hubTitle.innerText = "Invalid Hub Link";
   throw new Error("Slug not found");
 }
 
 async function loadHub() {
-  // 1️⃣ Fetch hub
+
+  // Fetch Hub
   const { data: hub, error: hubError } = await supabase
     .from("hubs")
     .select("*")
@@ -23,18 +24,19 @@ async function loadHub() {
 
   if (hubError || !hub) {
     hubTitle.innerText = "Hub not found";
+    console.error(hubError);
     return;
   }
 
   hubTitle.innerText = hub.title;
 
-  // 2️⃣ Fetch links
+  // Fetch Links
   const { data: links, error: linkError } = await supabase
     .from("links")
     .select("*")
     .eq("hub_id", hub.id)
     .eq("is_active", true)
-    .order("position", { ascending: true });
+    .order("position");
 
   if (linkError) {
     console.error(linkError);
@@ -43,32 +45,43 @@ async function loadHub() {
 
   hubContainer.innerHTML = "";
 
-  // 3️⃣ Apply rules + render
+  // Render links
   for (let link of links) {
-    const allowed = await checkRules(link.id);
 
+    const allowed = await checkRules(link.id);
     if (!allowed) continue;
 
     const btn = document.createElement("a");
+
     btn.href = link.url;
     btn.target = "_blank";
     btn.innerText = link.title;
     btn.className = "hub-btn";
 
+    // Track click
     btn.addEventListener("click", () => {
-      trackClick(link.id, hub.user_id);
+      trackClick(link.id);
     });
 
     hubContainer.appendChild(btn);
   }
 }
 
-async function trackClick(linkId, userId) {
-  await supabase.from("click_events").insert({
-    link_id: linkId,
-    owner_id: userId,
-    clicked_at: new Date()
-  });
+// Analytics insert
+async function trackClick(linkId) {
+
+  const { error } = await supabase
+    .from("click_events")
+    .insert({
+      link_id: linkId,
+      user_agent: navigator.userAgent,
+      country: "Unknown",
+      clicked_at: new Date().toISOString()
+    });
+
+  if (error) {
+    console.error("Click Error:", error.message);
+  }
 }
 
 loadHub();

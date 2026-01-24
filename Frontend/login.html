@@ -16,22 +16,100 @@
       --muted: #9ca3af;
     }
 
-    * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
-    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .card { background: var(--card); border: 1px solid #111; border-radius: 16px; padding: 32px; width: 100%; max-width: 400px; text-align: center; animation: fadeIn 0.6s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    h2 { color: var(--green); margin-bottom: 8px; }
-    p { color: var(--muted); font-size: 0.9rem; margin-bottom: 22px; }
-    input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px; border: none; background: #111; color: var(--text); }
-    input:focus { outline: 1px solid var(--green); }
-    .password-box { position: relative; }
-    .toggle { position: absolute; right: 12px; top: 12px; font-size: 0.8rem; color: var(--green); cursor: pointer; }
-    button { width: 100%; padding: 12px; background: var(--green); color: #000; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; margin-top: 6px; }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    .link { margin-top: 16px; font-size: 0.85rem; color: var(--green); cursor: pointer; }
-    .error { color: red; font-size: 0.8rem; margin-bottom: 10px; }
+    * {
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid #111;
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    h2 {
+      color: var(--green);
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 22px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border: none;
+      background: #111;
+      color: var(--text);
+    }
+
+    input:focus {
+      outline: 1px solid var(--green);
+    }
+
+    .password-box {
+      position: relative;
+    }
+
+    .toggle {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      font-size: 0.8rem;
+      color: var(--green);
+      cursor: pointer;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: var(--green);
+      color: #000;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .link {
+      margin-top: 16px;
+      font-size: 0.85rem;
+      color: var(--green);
+      cursor: pointer;
+    }
+
+    .error {
+      color: red;
+      font-size: 0.8rem;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
+
 <body>
 
   <div class="card">
@@ -40,44 +118,51 @@
 
     <div class="error" id="error"></div>
 
-    <input type="email" id="identifier" placeholder="Email">
+    <input type="email" id="identifier" placeholder="Email" />
+
     <div class="password-box">
-      <input type="password" id="password" placeholder="Password">
+      <input type="password" id="password" placeholder="Password" />
       <span class="toggle" id="toggleText">Show</span>
     </div>
 
-    <button id="loginBtn" onclick="location.href='dashboard.html'">Login</button>
+    <button id="loginBtn">Login</button>
 
-    <div class="link" id="goSignup">Don’t have an account? Sign Up</div>
+    <div class="link" id="goSignup">
+      Don’t have an account? Sign Up
+    </div>
   </div>
 
+  <!-- SCRIPT -->
   <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-
-    // ----- Supabase Setup -----
-    const supabaseUrl = 'https://nyghnjxdokohsolgxcml.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55Z2huanhkb2tvaHNvbGd4Y21sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxMzQ5MDMsImV4cCI6MjA4NDcxMDkwM30.ADyNSHr2fGpkktVJq0SXgnOm_X_gbA8P6Z5WmxUbsAo';
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    import { supabase } from "./assets/js/supabase.js";
 
     const errorDiv = document.getElementById("error");
     const loginBtn = document.getElementById("loginBtn");
 
-    // ----- Password toggle -----
+    // Password toggle
     document.getElementById("toggleText").addEventListener("click", () => {
       const pass = document.getElementById("password");
       const toggle = document.getElementById("toggleText");
-      if (pass.type === "password") { pass.type = "text"; toggle.innerText = "Hide"; }
-      else { pass.type = "password"; toggle.innerText = "Show"; }
+
+      if (pass.type === "password") {
+        pass.type = "text";
+        toggle.innerText = "Hide";
+      } else {
+        pass.type = "password";
+        toggle.innerText = "Show";
+      }
     });
 
-    // ----- Go to Signup -----
+    // Go to signup
     document.getElementById("goSignup").addEventListener("click", () => {
       window.location.href = "signup.html";
     });
 
-    // ----- Login function -----
+    // Login
     loginBtn.addEventListener("click", async () => {
+
       errorDiv.innerText = "";
+
       const email = document.getElementById("identifier").value.trim();
       const password = document.getElementById("password").value.trim();
 
@@ -88,7 +173,11 @@
 
       loginBtn.disabled = true;
 
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } =
+        await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
 
       loginBtn.disabled = false;
 
@@ -97,16 +186,17 @@
         return;
       }
 
-      // Check if email is verified
+      // Optional: Email verification check
       if (!data.user?.email_confirmed_at) {
-        errorDiv.innerText = "Please verify your email before logging in.";
-        await supabase.auth.signOut(); // Prevent session until verified
+        errorDiv.innerText = "Please verify your email first.";
+        await supabase.auth.signOut();
         return;
       }
 
-      // Redirect to dashboard
+      // Success → Dashboard
       window.location.href = "dashboard.html";
     });
+
   </script>
 
 </body>
