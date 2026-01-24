@@ -34,6 +34,7 @@
       padding:8px 14px;
       border-radius:8px;
       cursor:pointer;
+      margin-left: 10px;
     }
 
     .container { max-width:1000px; margin:auto; padding:30px 20px; }
@@ -115,7 +116,10 @@
 
 <div class="navbar">
   <h2>Smart Link Hub – Dashboard</h2>
-  <button id="viewPublicBtn">View Public Hub</button>
+  <div>
+    <button id="viewPublicBtn">View Public Hub</button>
+    <button id="logoutBtn">Logout</button>
+  </div>
 </div>
 
 <div class="container">
@@ -187,20 +191,19 @@
   const viewPublicBtn = document.getElementById("viewPublicBtn");
   const saveHubBtn = document.getElementById("saveHubBtn");
   const addLinkBtn = document.getElementById("addLinkBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
 
-  function setPublicButton(slug) {
-    if (!slug) {
-      viewPublicBtn.onclick = () => alert("Create/Save your hub first.");
-      return;
-    }
-    viewPublicBtn.onclick = () =>
-      window.open(`hub.html?slug=${encodeURIComponent(slug)}`, "_blank");
+  // ----------------------
+  // Prevent backward navigation after logout
+  // ----------------------
+  function preventBackNavigation() {
+    history.pushState(null, null, location.href);
+    window.onpopstate = () => history.go(1);
   }
 
-  function validSlug(slug) {
-    return /^[a-zA-Z0-9_-]+$/.test(slug);
-  }
-
+  // ----------------------
+  // Init dashboard
+  // ----------------------
   async function init() {
     const { data } = await supabase.auth.getUser();
     user = data.user;
@@ -210,13 +213,17 @@
       return;
     }
 
+    preventBackNavigation(); // block back
+
     await loadHubIfExists();
     await loadLinks();
     await loadAnalyticsOverview();
     await loadAnalyticsCards();
   }
 
-  // ✅ Works for old supabase-js (no maybeSingle)
+  // ----------------------
+  // Load hub if exists
+  // ----------------------
   async function loadHubIfExists() {
     const { data: hubs, error } = await supabase
       .from("hubs")
@@ -242,7 +249,25 @@
     }
   }
 
-  // ✅ Save hub using ON CONFLICT slug
+  // ----------------------
+  // Public hub button
+  // ----------------------
+  function setPublicButton(slug) {
+    if (!slug) {
+      viewPublicBtn.onclick = () => alert("Create/Save your hub first.");
+      return;
+    }
+    viewPublicBtn.onclick = () =>
+      window.open(`hub.html?slug=${encodeURIComponent(slug)}`, "_blank");
+  }
+
+  // ----------------------
+  // Save hub
+  // ----------------------
+  function validSlug(slug) {
+    return /^[a-zA-Z0-9_-]+$/.test(slug);
+  }
+
   saveHubBtn.addEventListener("click", async () => {
     hubMsg.innerText = "";
 
@@ -294,6 +319,9 @@
     await loadAnalyticsCards();
   });
 
+  // ----------------------
+  // Add link
+  // ----------------------
   addLinkBtn.addEventListener("click", async () => {
     linkMsg.innerText = "";
 
@@ -335,6 +363,9 @@
     await loadAnalyticsCards();
   });
 
+  // ----------------------
+  // Load links
+  // ----------------------
   async function loadLinks() {
     if (!currentHub) {
       document.getElementById("linkList").innerHTML =
@@ -382,6 +413,9 @@
     }
   }
 
+  // ----------------------
+  // Analytics overview
+  // ----------------------
   async function loadAnalyticsOverview() {
     document.getElementById("totalVisits").innerText = "—";
 
@@ -419,6 +453,9 @@
     document.getElementById("topLink").innerText = top;
   }
 
+  // ----------------------
+  // Analytics cards
+  // ----------------------
   async function loadAnalyticsCards() {
     const container = document.getElementById("analytics");
     if (!container) return;
@@ -463,6 +500,17 @@
       container.appendChild(div);
     });
   }
+
+  // ----------------------
+  // Logout
+  // ----------------------
+  logoutBtn.addEventListener("click", async () => {
+    await supabase.auth.signOut();
+    // push state to prevent back
+    history.pushState(null, null, location.href);
+    window.onpopstate = () => history.go(1);
+    location.href = "index.html";
+  });
 
   init();
 </script>

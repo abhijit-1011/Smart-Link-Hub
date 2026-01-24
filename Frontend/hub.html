@@ -17,6 +17,7 @@
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
     body {
       background: var(--bg);
       color: var(--text);
@@ -25,13 +26,28 @@
       justify-content: center;
       padding: 40px 16px;
     }
-    .hub-container { max-width: 520px; width: 100%; text-align: center; }
 
-    .profile { margin-bottom: 18px; }
-    .profile h1 { color: var(--green); font-size: 2rem; margin-bottom: 6px; }
-    .profile p { color: var(--muted); font-size: 0.95rem; }
+    .hub-container {
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+    }
 
-    /* HUB URL + COPY */
+    .profile {
+      margin-bottom: 18px;
+    }
+
+    .profile h1 {
+      color: var(--green);
+      font-size: 2rem;
+      margin-bottom: 6px;
+    }
+
+    .profile p {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
     .hub-url {
       display: flex;
       gap: 8px;
@@ -56,7 +72,6 @@
       color: var(--green);
       font-weight: 600;
       cursor: pointer;
-      white-space: nowrap;
     }
 
     .hub-url button:hover {
@@ -64,7 +79,45 @@
       color: #000;
     }
 
-    .links { display: flex; flex-direction: column; gap: 16px; margin-top: 30px; }
+    .qr-box {
+      margin-top: 20px;
+    }
+
+    .qr-box canvas {
+      background: #fff;
+      padding: 10px;
+      border-radius: 12px;
+    }
+
+    .qr-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 12px;
+    }
+
+    .qr-actions button {
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--green);
+      background: transparent;
+      color: var(--green);
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .qr-actions button:hover {
+      background: var(--green);
+      color: #000;
+    }
+
+    .links {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 30px;
+    }
+
     .link-card {
       background: var(--card);
       border: 1px solid #111;
@@ -73,18 +126,33 @@
       cursor: pointer;
       transition: all 0.25s ease;
     }
+
     .link-card:hover {
       border-color: var(--green);
       box-shadow: 0 0 16px rgba(0,255,102,0.2);
       transform: translateY(-2px);
     }
 
-    .link-title { color: var(--green); font-size: 1.05rem; font-weight: 600; }
-    .link-desc { color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
+    .link-title {
+      color: var(--green);
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
 
-    footer { margin-top: 40px; font-size: 0.8rem; color: var(--muted); }
+    .link-desc {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 6px;
+    }
+
+    footer {
+      margin-top: 40px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
   </style>
 </head>
+
 <body>
 
   <div class="hub-container">
@@ -95,10 +163,20 @@
       <p id="hubDesc">All my important links in one place</p>
     </div>
 
-    <!-- HUB URL WITH COPY BUTTON -->
+    <!-- HUB URL -->
     <div class="hub-url">
       <input id="hubUrl" type="text" readonly />
       <button id="copyBtn">Copy</button>
+    </div>
+
+    <!-- QR -->
+    <div class="qr-box">
+      <canvas id="qrCanvas"></canvas>
+
+      <div class="qr-actions">
+        <button id="downloadQR">Download</button>
+        <button id="shareQR">Share</button>
+      </div>
     </div>
 
     <!-- LINKS -->
@@ -110,39 +188,64 @@
 
   </div>
 
+  <!-- QR CODE LIBRARY -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
   <script type="module">
     import { supabase } from "./assets/js/supabase.js";
 
-    // Get hub slug from URL
     const params = new URLSearchParams(window.location.search);
     const slug = params.get("slug") || "demo";
 
-    // Set hub public URL
+    const hubUrl = `${window.location.origin}/hub.html?slug=${slug}`;
+
     const hubUrlInput = document.getElementById("hubUrl");
     const copyBtn = document.getElementById("copyBtn");
+    const qrCanvas = document.getElementById("qrCanvas");
+    const downloadBtn = document.getElementById("downloadQR");
+    const shareBtn = document.getElementById("shareQR");
 
-    hubUrlInput.value = `${window.location.origin}/hub.html?slug=${slug}`;
+    hubUrlInput.value = hubUrl;
 
-    // Copy to clipboard
+    // Generate QR (NO CORS ISSUE)
+    QRCode.toCanvas(qrCanvas, hubUrl, {
+      width: 140,
+      margin: 2
+    });
+
     copyBtn.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(hubUrlInput.value);
-        copyBtn.innerText = "Copied!";
-        setTimeout(() => (copyBtn.innerText = "Copy"), 1500);
-      } catch {
-        alert("Failed to copy");
+      await navigator.clipboard.writeText(hubUrl);
+      copyBtn.innerText = "Copied!";
+      setTimeout(() => copyBtn.innerText = "Copy", 1500);
+    };
+
+    downloadBtn.onclick = () => {
+      const link = document.createElement("a");
+      link.download = `smart-link-hub-${slug}.png`;
+      link.href = qrCanvas.toDataURL("image/png");
+      link.click();
+    };
+
+    shareBtn.onclick = async () => {
+      if (navigator.share) {
+        await navigator.share({
+          title: "My Smart Link Hub",
+          text: "Check out my Smart Link Hub",
+          url: hubUrl
+        });
+      } else {
+        alert("Sharing not supported on this browser");
       }
     };
 
     async function loadHub() {
-      const { data: hubData, error: hubError } = await supabase
+      const { data: hubData } = await supabase
         .from("hubs")
         .select("*")
         .eq("slug", slug)
         .single();
 
-      if (hubError || !hubData) {
-        console.error(hubError);
+      if (!hubData) {
         document.getElementById("hubName").innerText = "Hub not found";
         return;
       }
@@ -152,19 +255,14 @@
       document.getElementById("hubDesc").innerText =
         hubData.description || "All my important links in one place";
 
-      const { data: links, error: linksError } = await supabase
+      const { data: links } = await supabase
         .from("links")
         .select("*")
         .eq("hub_id", hubData.id)
         .eq("is_active", true)
-        .order("position", { ascending: true });
+        .order("position");
 
-      if (linksError) {
-        console.error(linksError);
-        return;
-      }
-
-      renderLinks(links);
+      renderLinks(links || []);
     }
 
     function renderLinks(links) {
