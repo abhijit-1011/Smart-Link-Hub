@@ -17,16 +17,67 @@
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-    body { background: var(--bg); color: var(--text); min-height: 100xvh; display: flex; justify-content: center; padding: 40px 16px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 40px 16px;
+    }
     .hub-container { max-width: 520px; width: 100%; text-align: center; }
 
-    .profile { margin-bottom: 30px; }
+    .profile { margin-bottom: 18px; }
     .profile h1 { color: var(--green); font-size: 2rem; margin-bottom: 6px; }
     .profile p { color: var(--muted); font-size: 0.95rem; }
 
+    /* HUB URL + COPY */
+    .hub-url {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .hub-url input {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #111;
+      background: #050505;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .hub-url button {
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--green);
+      background: transparent;
+      color: var(--green);
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .hub-url button:hover {
+      background: var(--green);
+      color: #000;
+    }
+
     .links { display: flex; flex-direction: column; gap: 16px; margin-top: 30px; }
-    .link-card { background: var(--card); border: 1px solid #111; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.25s ease; }
-    .link-card:hover { border-color: var(--green); box-shadow: 0 0 16px rgba(0,255,102,0.2); transform: translateY(-2px); }
+    .link-card {
+      background: var(--card);
+      border: 1px solid #111;
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .link-card:hover {
+      border-color: var(--green);
+      box-shadow: 0 0 16px rgba(0,255,102,0.2);
+      transform: translateY(-2px);
+    }
 
     .link-title { color: var(--green); font-size: 1.05rem; font-weight: 600; }
     .link-desc { color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
@@ -42,6 +93,12 @@
     <div class="profile">
       <h1 id="hubName">@smartlink</h1>
       <p id="hubDesc">All my important links in one place</p>
+    </div>
+
+    <!-- HUB URL WITH COPY BUTTON -->
+    <div class="hub-url">
+      <input id="hubUrl" type="text" readonly />
+      <button id="copyBtn">Copy</button>
     </div>
 
     <!-- LINKS -->
@@ -60,8 +117,24 @@
     const params = new URLSearchParams(window.location.search);
     const slug = params.get("slug") || "demo";
 
+    // Set hub public URL
+    const hubUrlInput = document.getElementById("hubUrl");
+    const copyBtn = document.getElementById("copyBtn");
+
+    hubUrlInput.value = `${window.location.origin}/hub.html?slug=${slug}`;
+
+    // Copy to clipboard
+    copyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(hubUrlInput.value);
+        copyBtn.innerText = "Copied!";
+        setTimeout(() => (copyBtn.innerText = "Copy"), 1500);
+      } catch {
+        alert("Failed to copy");
+      }
+    };
+
     async function loadHub() {
-      // Fetch hub info
       const { data: hubData, error: hubError } = await supabase
         .from("hubs")
         .select("*")
@@ -74,10 +147,11 @@
         return;
       }
 
-      document.getElementById("hubName").innerText = hubData.name || "@smartlink";
-      document.getElementById("hubDesc").innerText = hubData.description || "All my important links in one place";
+      document.getElementById("hubName").innerText =
+        hubData.name || "@smartlink";
+      document.getElementById("hubDesc").innerText =
+        hubData.description || "All my important links in one place";
 
-      // Fetch links
       const { data: links, error: linksError } = await supabase
         .from("links")
         .select("*")
@@ -106,7 +180,6 @@
         `;
 
         div.onclick = async () => {
-          // Track clicks
           await supabase.from("click_events").insert({
             link_id: link.id,
             hub_id: link.hub_id,
