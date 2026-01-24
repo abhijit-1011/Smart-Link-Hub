@@ -1,53 +1,73 @@
 import { supabase } from "./supabase.js";
+import { checkRules } from "./rules.js";
 
-// Read slug from URL
-// Example: hub.html?slug=myhub
+const hubContainer = document.getElementById("hub-links");
+const hubTitle = document.getElementById("hub-title");
+
+// get slug from URL
 const params = new URLSearchParams(window.location.search);
 const slug = params.get("slug");
 
 if (!slug) {
-  alert("Invalid hub link");
+  hubTitle.innerText = "Invalid hub link";
+  throw new Error("Slug not found");
 }
 
 async function loadHub() {
-  // Fetch hub
+  // 1️⃣ Fetch hub
   const { data: hub, error: hubError } = await supabase
     .from("hubs")
     .select("*")
     .eq("slug", slug)
     .single();
 
-  if (hubError) {
-    alert("Hub not found");
+  if (hubError || !hub) {
+    hubTitle.innerText = "Hub not found";
     return;
   }
 
-  document.getElementById("hub-title").textContent = hub.title;
+  hubTitle.innerText = hub.title;
 
-  // Fetch links
-  const { data: links, error } = await supabase
+  // 2️⃣ Fetch links
+  const { data: links, error: linkError } = await supabase
     .from("links")
     .select("*")
     .eq("hub_id", hub.id)
     .eq("is_active", true)
-    .order("order_index");
+    .order("position", { ascending: true });
 
-  if (error) {
-    console.error(error);
+  if (linkError) {
+    console.error(linkError);
     return;
   }
 
-  const container = document.getElementById("links");
-  container.innerHTML = "";
+  hubContainer.innerHTML = "";
 
-  links.forEach(link => {
-    const a = document.createElement("a");
-    a.href = link.url;
-    a.textContent = link.title;
-    a.target = "_blank";
-    a.className = "hub-link";
+  // 3️⃣ Apply rules + render
+  for (let link of links) {
+    const allowed = await checkRules(link.id);
 
-    container.appendChild(a);
+    if (!allowed) continue;
+
+    const btn = document.createElement("a");
+    btn.href = link.url;
+    btn.target = "_blank";
+    btn.innerText = link.title;
+    btn.className = "hub-btn";
+
+    btn.addEventListener("click", () => {
+      trackClick(link.id, hub.user_id);
+    });
+
+    hubContainer.appendChild(btn);
+  }
+}
+
+async function trackClick(linkId, userId) {
+  await supabase.from("click_events").insert({
+    link_id: linkId,
+    owner_id: userId,
+    clicked_at: new Date()
   });
 }
 
