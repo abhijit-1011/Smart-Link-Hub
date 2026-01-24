@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Smart Link Hub</title>
+
+  <link rel="stylesheet" href="assets/css/main.css">
+  <link rel="stylesheet" href="assets/css/hub.css">
+</head>
+<body>
+
+  <div class="hub-container">
+
+    <div class="profile">
+      <h1>@smartlink</h1>
+      <p>All my important links in one place</p>
+    </div>
+
+    <div class="links" id="links"></div>
+
+    <footer>
+      Powered by Smart Link Hub
+    </footer>
+
+  </div>
+
+  <script>
+    /* Load links from localStorage (Saved by Dashboard) 
+    */
+    const links = JSON.parse(localStorage.getItem("links")) || [];
+    const container = document.getElementById("links");
+
+    if (links.length === 0) {
+      container.innerHTML = "<p style='color:#9ca3af;'>No links yet. Go to Dashboard to add some.</p>";
+    }
+
+    links.forEach(link => {
+      const div = document.createElement("div");
+      div.className = "link-card";
+
+      div.innerHTML = `
+        <div class="link-title">${link.title}</div>
+        <div class="link-desc">${link.desc}</div>
+      `;
+
+      div.onclick = () => {
+        window.open(link.url, "_blank");
+      };
+
+      container.appendChild(div);
+    });
+  </script>
+
+</body>
+</html>

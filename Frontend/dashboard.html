@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard | Smart Link Hub</title>
+
+  <link rel="stylesheet" href="assests/css/main.css">
+  <link rel="stylesheet" href="assests/css/dashboard.css">
+</head>
+<body>
+
+  <div class="navbar">
+    <h2>Dashboard</h2>
+    <button onclick="location.href='hub.html'">View Public Hub</button>
+  </div>
+
+  <div class="container">
+
+    <div class="form-card">
+      <h3>Add New Link</h3>
+      <input type="text" id="title" placeholder="Link title" />
+      <input type="text" id="desc" placeholder="Short description" />
+      <input type="url" id="url" placeholder="https://example.com" />
+      <button class="add-btn" onclick="addLink()">Add Link</button>
+    </div>
+
+    <h3>Your Links</h3>
+    <div id="linkList"></div>
+
+  </div>
+
+  <script>
+    let links = JSON.parse(localStorage.getItem("links")) || [];
+
+    function saveLinks() {
+      localStorage.setItem("links", JSON.stringify(links));
+    }
+
+    function renderLinks() {
+      const list = document.getElementById("linkList");
+      list.innerHTML = "";
+
+      links.forEach((link, index) => {
+        const div = document.createElement("div");
+        div.className = "link-item";
+
+        div.innerHTML = `
+          <div class="link-info">
+            <h4>${link.title}</h4>
+            <p>${link.desc}</p>
+          </div>
+          <button class="delete-btn" onclick="deleteLink(${index})">Delete</button>
+        `;
+
+        list.appendChild(div);
+      });
+    }
+
+    function addLink() {
+      const title = document.getElementById("title").value;
+      const desc = document.getElementById("desc").value;
+      const url = document.getElementById("url").value;
+
+      if (!title || !url) {
+        alert("Title and URL required");
+        return;
+      }
+
+      links.push({ title, desc, url });
+      saveLinks();
+      renderLinks();
+
+      document.getElementById("title").value = "";
+      document.getElementById("desc").value = "";
+      document.getElementById("url").value = "";
+    }
+
+    function deleteLink(index) {
+      links.splice(index, 1);
+      saveLinks();
+      renderLinks();
+    }
+
+    renderLinks();
+  </script>
+
+</body>
+</html>
