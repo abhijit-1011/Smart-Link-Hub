@@ -9,224 +9,258 @@
 
   <style>
     :root {
-      --bg: #000;
-      --green: #00ff66;
-      --card: #050505;
-      --text: #eaeaea;
-      --muted: #9ca3af;
+      --bg:#000;
+      --card:#070707;
+      --green:#00ff66;
+      --text:#eaeaea;
+      --muted:#9ca3af;
     }
 
-    * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
-    body { background: var(--bg); color: var(--text); margin: 0; padding: 0; }
+    * { box-sizing: border-box; font-family: Inter, sans-serif; }
+    body { margin:0; background:var(--bg); color:var(--text); }
 
     /* NAVBAR */
     .navbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 18px 32px;
-      border-bottom: 1px solid #111;
+      display:flex;
+      justify-content:space-between;
+      padding:18px 30px;
+      border-bottom:1px solid #111;
     }
-
-    .navbar h2 { color: var(--green); font-size: 1.3rem; }
+    .navbar h2 { color:var(--green); }
     .navbar button {
-      background: transparent;
-      border: 1px solid var(--green);
-      color: var(--green);
-      padding: 8px 16px;
-      border-radius: 8px;
-      cursor: pointer;
+      background:transparent;
+      border:1px solid var(--green);
+      color:var(--green);
+      padding:8px 14px;
+      border-radius:8px;
+      cursor:pointer;
     }
 
-    .container { max-width: 900px; margin: auto; padding: 32px 20px; }
+    .container { max-width:1000px; margin:auto; padding:30px 20px; }
 
-    h3 { margin-bottom: 14px; color: var(--green); }
+    h3 { color:var(--green); margin-bottom:12px; }
 
-    /* ADD LINK FORM */
-    .form-card {
-      background: var(--card);
-      padding: 20px;
-      border-radius: 14px;
-      margin-bottom: 30px;
-      border: 1px solid #111;
+    .card {
+      background:var(--card);
+      border:1px solid #111;
+      border-radius:14px;
+      padding:20px;
+      margin-bottom:28px;
     }
 
-    input {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 12px;
-      border-radius: 8px;
-      border: none;
-      background: #111;
-      color: var(--text);
+    input, select {
+      width:100%;
+      padding:12px;
+      margin-bottom:10px;
+      border-radius:8px;
+      border:none;
+      background:#111;
+      color:var(--text);
     }
 
-    input:focus { outline: 1px solid var(--green); }
-
-    .add-btn {
-      width: 100%;
-      padding: 12px;
-      background: var(--green);
-      color: #000;
-      font-weight: 600;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
+    input:focus, select:focus {
+      outline:1px solid var(--green);
     }
 
-    /* LINK LIST */
+    .btn {
+      padding:10px 16px;
+      border-radius:8px;
+      border:none;
+      cursor:pointer;
+      font-weight:600;
+    }
+
+    .btn-green { background:var(--green); color:#000; }
+    .btn-red {
+      background:transparent;
+      border:1px solid red;
+      color:red;
+    }
+
+    /* LINK ITEM */
     .link-item {
-      background: var(--card);
-      border: 1px solid #111;
-      border-radius: 12px;
-      padding: 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      background:#050505;
+      border:1px solid #111;
+      border-radius:12px;
+      padding:14px;
+      margin-bottom:10px;
     }
 
-    .link-info h4 { color: var(--green); margin-bottom: 4px; }
-    .link-info p { color: var(--muted); font-size: 0.85rem; }
-    .delete-btn {
-      background: transparent;
-      border: 1px solid red;
-      color: red;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-left: 8px;
+    .link-info h4 { color:var(--green); margin:0 0 4px; }
+    .link-info p { color:var(--muted); font-size:0.85rem; }
+
+    .analytics {
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:16px;
     }
+
+    .stat {
+      background:#050505;
+      border:1px solid #111;
+      border-radius:12px;
+      padding:16px;
+      text-align:center;
+    }
+
+    .stat h2 { color:var(--green); margin:0; }
+    .stat p { color:var(--muted); margin:4px 0 0; }
   </style>
 </head>
 <body>
 
-  <!-- NAVBAR -->
-  <div class="navbar">
-    <h2>Dashboard</h2>
-    <button onclick="location.href='hub.html'">View Public Hub</button>
+<!-- NAVBAR -->
+<div class="navbar">
+  <h2>Smart Link Hub – Dashboard</h2>
+  <button onclick="location.href='hub.html'">View Public Hub</button>
+</div>
+
+<div class="container">
+
+  <!-- HUB SETTINGS -->
+  <div class="card">
+    <h3>Hub Settings</h3>
+    <input id="hubTitle" placeholder="Hub Title">
+    <input id="hubDesc" placeholder="Hub Description">
+    <select id="hubTheme">
+      <option value="dark">Dark</option>
+      <option value="light">Light</option>
+      <option value="neon">Neon</option>
+    </select>
+    <button class="btn btn-green" onclick="saveHub()">Save Hub</button>
   </div>
 
-  <!-- MAIN -->
-  <div class="container">
+  <!-- ADD LINK -->
+  <div class="card">
+    <h3>Add / Edit Link</h3>
+    <input id="linkTitle" placeholder="Link Title">
+    <input id="linkUrl" placeholder="https://example.com">
+    <input id="linkDesc" placeholder="Short Description">
 
-    <!-- ADD LINK -->
-    <div class="form-card">
-      <h3>Add New Link</h3>
-      <input type="text" id="title" placeholder="Link title" />
-      <input type="text" id="desc" placeholder="Short description" />
-      <input type="url" id="url" placeholder="https://example.com" />
-      <button class="add-btn" id="addLinkBtn">Add Link</button>
+    <!-- RULES -->
+    <select id="ruleTime">
+      <option value="">Time Rule (Optional)</option>
+      <option value="work">Working Hours</option>
+      <option value="night">Night Only</option>
+    </select>
+
+    <select id="ruleDevice">
+      <option value="">Device Rule</option>
+      <option value="mobile">Mobile</option>
+      <option value="desktop">Desktop</option>
+    </select>
+
+    <select id="ruleCountry">
+      <option value="">Country Rule</option>
+      <option value="IN">India</option>
+      <option value="US">USA</option>
+    </select>
+
+    <button class="btn btn-green" onclick="addLink()">Save Link</button>
+  </div>
+
+  <!-- LINKS -->
+  <h3>Your Links</h3>
+  <div id="linkList"></div>
+
+  <!-- ANALYTICS -->
+  <div class="card">
+    <h3>Analytics Overview</h3>
+    <div class="analytics">
+      <div class="stat">
+        <h2 id="totalVisits">0</h2>
+        <p>Total Hub Visits</p>
+      </div>
+      <div class="stat">
+        <h2 id="totalClicks">0</h2>
+        <p>Total Link Clicks</p>
+      </div>
+      <div class="stat">
+        <h2 id="topLink">—</h2>
+        <p>Top Performing Link</p>
+      </div>
     </div>
-
-    <!-- LINK LIST -->
-    <h3>Your Links</h3>
-    <div id="linkList"></div>
-
   </div>
 
-  <script type="module">
-    import { supabase } from "./assets/js/supabase.js";
+</div>
 
-    let user;
+<script type="module">
+  import { supabase } from "./assets/js/supabase.js";
 
-    async function init() {
-      // Get logged-in user
-      const { data } = await supabase.auth.getUser();
-      user = data.user;
+  let user;
 
-      if (!user) {
-        alert("Please login first.");
-        window.location.href = "index.html";
-        return;
-      }
+  async function init() {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+    if (!user) location.href = "index.html";
 
-      loadLinks();
+    loadLinks();
+    loadAnalytics();
+  }
 
-      // Attach Add Link button
-      document.getElementById("addLinkBtn").addEventListener("click", addLink);
-    }
+  async function saveHub() {
+    await supabase.from("hubs").upsert({
+      user_id: user.id,
+      title: hubTitle.value,
+      description: hubDesc.value,
+      theme: hubTheme.value
+    });
+    alert("Hub saved");
+  }
 
-    async function loadLinks() {
-      const { data: links, error } = await supabase
-        .from("links")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+  async function addLink() {
+    await supabase.from("links").insert({
+      user_id: user.id,
+      title: linkTitle.value,
+      url: linkUrl.value,
+      description: linkDesc.value,
+      rule_time: ruleTime.value,
+      rule_device: ruleDevice.value,
+      rule_country: ruleCountry.value
+    });
+    loadLinks();
+  }
 
-      if (error) {
-        console.error(error);
-        return;
-      }
+  async function loadLinks() {
+    const { data } = await supabase
+      .from("links")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("clicks", { ascending:false });
 
-      const container = document.getElementById("linkList");
-      container.innerHTML = "";
+    linkList.innerHTML = "";
+    data.forEach(l => {
+      const div = document.createElement("div");
+      div.className = "link-item";
+      div.innerHTML = `
+        <div class="link-info">
+          <h4>${l.title}</h4>
+          <p>${l.url}</p>
+          <p>Clicks: ${l.clicks || 0}</p>
+        </div>
+        <button class="btn btn-red" onclick="deleteLink('${l.id}')">Delete</button>
+      `;
+      linkList.appendChild(div);
+    });
+  }
 
-      links.forEach(link => {
-        const div = document.createElement("div");
-        div.className = "link-item";
+  async function deleteLink(id) {
+    await supabase.from("links").delete().eq("id", id);
+    loadLinks();
+  }
 
-        div.innerHTML = `
-          <div class="link-info">
-            <h4>${link.title}</h4>
-            <p>${link.description || ""}</p>
-          </div>
-          <div>
-            <button class="delete-btn" onclick="deleteLink('${link.id}')">Delete</button>
-          </div>
-        `;
+  async function loadAnalytics() {
+    const { data } = await supabase.rpc("hub_analytics", { uid: user.id });
+    totalVisits.innerText = data.visits;
+    totalClicks.innerText = data.clicks;
+    topLink.innerText = data.top_link || "—";
+  }
 
-        container.appendChild(div);
-      });
-    }
-
-    async function addLink() {
-      const title = document.getElementById("title").value.trim();
-      const desc = document.getElementById("desc").value.trim();
-      const url = document.getElementById("url").value.trim();
-
-      if (!title || !url) {
-        alert("Title and URL are required.");
-        return;
-      }
-
-      const { data, error } = await supabase.from("links").insert([
-        {
-          user_id: user.id,
-          title: title,
-          description: desc,
-          url: url,
-          is_active: true,
-        }
-      ]);
-
-      if (error) {
-        alert("Failed to add link: " + error.message);
-        return;
-      }
-
-      document.getElementById("title").value = "";
-      document.getElementById("desc").value = "";
-      document.getElementById("url").value = "";
-
-      loadLinks();
-    }
-
-    window.deleteLink = async id => {
-      if (!confirm("Are you sure you want to delete this link?")) return;
-
-      const { error } = await supabase.from("links").delete().eq("id", id);
-
-      if (error) {
-        alert("Failed to delete link: " + error.message);
-        return;
-      }
-
-      loadLinks();
-    };
-
-    init();
-  </script>
+  init();
+</script>
 
 </body>
 </html>
