@@ -242,10 +242,13 @@
       hubTheme.value = hub.theme || "dark";
       setPublicButton(hub.slug);
       hubMsg.innerText = "Hub loaded.";
+      // ✅ Set total visits from hub.visit_count
+      document.getElementById("totalVisits").innerText = hub.visit_count || 0;
     } else {
       currentHub = null;
       hubMsg.innerText = "No hub found. Please create your hub and click Save Hub.";
       setPublicButton("");
+      document.getElementById("totalVisits").innerText = "0";
     }
   }
 
@@ -313,6 +316,8 @@
     currentHub = savedHub;
     hubMsg.innerText = "Hub saved successfully.";
     setPublicButton(savedHub.slug);
+
+    document.getElementById("totalVisits").innerText = savedHub.visit_count || 0;
 
     await loadLinks();
     await loadAnalyticsOverview();
@@ -417,13 +422,7 @@
   // Analytics overview
   // ----------------------
   async function loadAnalyticsOverview() {
-    document.getElementById("totalVisits").innerText = "—";
-
-    if (!currentHub) {
-      document.getElementById("totalClicks").innerText = "0";
-      document.getElementById("topLink").innerText = "—";
-      return;
-    }
+    if (!currentHub) return;
 
     const { data: clicks, error } = await supabase
       .from("click_events")
@@ -506,7 +505,6 @@
   // ----------------------
   logoutBtn.addEventListener("click", async () => {
     await supabase.auth.signOut();
-    // push state to prevent back
     history.pushState(null, null, location.href);
     window.onpopstate = () => history.go(1);
     location.href = "index.html";

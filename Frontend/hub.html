@@ -27,33 +27,13 @@
       padding: 40px 16px;
     }
 
-    .hub-container {
-      max-width: 520px;
-      width: 100%;
-      text-align: center;
-    }
+    .hub-container { max-width: 520px; width: 100%; text-align: center; }
 
-    .profile {
-      margin-bottom: 18px;
-    }
+    .profile { margin-bottom: 18px; }
+    .profile h1 { color: var(--green); font-size: 2rem; margin-bottom: 6px; }
+    .profile p { color: var(--muted); font-size: 0.95rem; }
 
-    .profile h1 {
-      color: var(--green);
-      font-size: 2rem;
-      margin-bottom: 6px;
-    }
-
-    .profile p {
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-
-    .hub-url {
-      display: flex;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
+    .hub-url { display: flex; gap: 8px; margin-top: 12px; }
     .hub-url input {
       flex: 1;
       padding: 12px;
@@ -63,7 +43,6 @@
       color: var(--muted);
       text-align: center;
     }
-
     .hub-url button {
       padding: 12px 14px;
       border-radius: 8px;
@@ -73,29 +52,11 @@
       font-weight: 600;
       cursor: pointer;
     }
+    .hub-url button:hover { background: var(--green); color: #000; }
 
-    .hub-url button:hover {
-      background: var(--green);
-      color: #000;
-    }
-
-    .qr-box {
-      margin-top: 20px;
-    }
-
-    .qr-box canvas {
-      background: #fff;
-      padding: 10px;
-      border-radius: 12px;
-    }
-
-    .qr-actions {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      margin-top: 12px;
-    }
-
+    .qr-box { margin-top: 20px; }
+    .qr-box canvas { background: #fff; padding: 10px; border-radius: 12px; }
+    .qr-actions { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
     .qr-actions button {
       padding: 10px 14px;
       border-radius: 8px;
@@ -105,19 +66,9 @@
       cursor: pointer;
       font-weight: 600;
     }
+    .qr-actions button:hover { background: var(--green); color: #000; }
 
-    .qr-actions button:hover {
-      background: var(--green);
-      color: #000;
-    }
-
-    .links {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      margin-top: 30px;
-    }
-
+    .links { display: flex; flex-direction: column; gap: 16px; margin-top: 30px; }
     .link-card {
       background: var(--card);
       border: 1px solid #111;
@@ -126,30 +77,12 @@
       cursor: pointer;
       transition: all 0.25s ease;
     }
+    .link-card:hover { border-color: var(--green); box-shadow: 0 0 16px rgba(0,255,102,0.2); transform: translateY(-2px); }
 
-    .link-card:hover {
-      border-color: var(--green);
-      box-shadow: 0 0 16px rgba(0,255,102,0.2);
-      transform: translateY(-2px);
-    }
+    .link-title { color: var(--green); font-size: 1.05rem; font-weight: 600; }
+    .link-desc { color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
 
-    .link-title {
-      color: var(--green);
-      font-size: 1.05rem;
-      font-weight: 600;
-    }
-
-    .link-desc {
-      color: var(--muted);
-      font-size: 0.85rem;
-      margin-top: 6px;
-    }
-
-    footer {
-      margin-top: 40px;
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
+    footer { margin-top: 40px; font-size: 0.8rem; color: var(--muted); }
   </style>
 </head>
 
@@ -207,11 +140,8 @@
 
     hubUrlInput.value = hubUrl;
 
-    // Generate QR (NO CORS ISSUE)
-    QRCode.toCanvas(qrCanvas, hubUrl, {
-      width: 140,
-      margin: 2
-    });
+    // Generate QR
+    QRCode.toCanvas(qrCanvas, hubUrl, { width: 140, margin: 2 });
 
     copyBtn.onclick = async () => {
       await navigator.clipboard.writeText(hubUrl);
@@ -228,17 +158,12 @@
 
     shareBtn.onclick = async () => {
       if (navigator.share) {
-        await navigator.share({
-          title: "My Smart Link Hub",
-          text: "Check out my Smart Link Hub",
-          url: hubUrl
-        });
-      } else {
-        alert("Sharing not supported on this browser");
-      }
+        await navigator.share({ title: "My Smart Link Hub", text: "Check out my Smart Link Hub", url: hubUrl });
+      } else { alert("Sharing not supported on this browser"); }
     };
 
     async function loadHub() {
+      // Fetch hub data
       const { data: hubData } = await supabase
         .from("hubs")
         .select("*")
@@ -250,10 +175,14 @@
         return;
       }
 
-      document.getElementById("hubName").innerText =
-        hubData.name || "@smartlink";
-      document.getElementById("hubDesc").innerText =
-        hubData.description || "All my important links in one place";
+      document.getElementById("hubName").innerText = hubData.name || "@smartlink";
+      document.getElementById("hubDesc").innerText = hubData.description || "All my important links in one place";
+
+      // ✅ Increment visit count on each page load
+      await supabase
+        .from("hubs")
+        .update({ visit_count: (hubData.visit_count || 0) + 1 })
+        .eq("id", hubData.id);
 
       const { data: links } = await supabase
         .from("links")
