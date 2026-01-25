@@ -33,6 +33,41 @@
     .profile h1 { color: var(--green); font-size: 2rem; margin-bottom: 6px; }
     .profile p { color: var(--muted); font-size: 0.95rem; }
 
+    .hub-url { display: flex; gap: 8px; margin-top: 12px; }
+    .hub-url input {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #111;
+      background: #050505;
+      color: var(--muted);
+      text-align: center;
+    }
+    .hub-url button {
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--green);
+      background: transparent;
+      color: var(--green);
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .hub-url button:hover { background: var(--green); color: #000; }
+
+    .qr-box { margin-top: 20px; }
+    .qr-box canvas { background: #fff; padding: 10px; border-radius: 12px; }
+    .qr-actions { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
+    .qr-actions button {
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--green);
+      background: transparent;
+      color: var(--green);
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .qr-actions button:hover { background: var(--green); color: #000; }
+
     .links { display: flex; flex-direction: column; gap: 16px; margin-top: 30px; }
     .link-card {
       background: var(--card);
@@ -62,12 +97,30 @@
 
   <div class="hub-container">
 
+    <!-- PROFILE -->
     <div class="profile">
       <h1 id="hubName">@smartlink</h1>
       <p id="hubDesc">All my important links in one place</p>
       <div id="msg" class="error"></div>
     </div>
 
+    <!-- HUB URL -->
+    <div class="hub-url">
+      <input id="hubUrl" type="text" readonly />
+      <button id="copyBtn">Copy</button>
+    </div>
+
+    <!-- QR -->
+    <div class="qr-box">
+      <canvas id="qrCanvas"></canvas>
+
+      <div class="qr-actions">
+        <button id="downloadQR">Download</button>
+        <button id="shareQR">Share</button>
+      </div>
+    </div>
+
+    <!-- LINKS -->
     <div class="links" id="links"></div>
 
     <footer>
@@ -76,30 +129,74 @@
 
   </div>
 
+  <!-- QR CODE LIBRARY -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
   <script type="module">
     import { supabase } from "./assets/js/supabase.js";
 
     const params = new URLSearchParams(window.location.search);
     const slug = (params.get("slug") || "").trim();
+
     const msgEl = document.getElementById("msg");
+
+    // Build public URL (this is what QR should contain)
+    const hubUrl = `${window.location.origin}/hub.html?slug=${encodeURIComponent(slug)}`;
+
+    const hubUrlInput = document.getElementById("hubUrl");
+    const copyBtn = document.getElementById("copyBtn");
+    const qrCanvas = document.getElementById("qrCanvas");
+    const downloadBtn = document.getElementById("downloadQR");
+    const shareBtn = document.getElementById("shareQR");
+
+    // Copy/QR only if slug exists
+    if (slug) {
+      hubUrlInput.value = hubUrl;
+      QRCode.toCanvas(qrCanvas, hubUrl, { width: 140, margin: 2 });
+    } else {
+      hubUrlInput.value = "Missing slug. Open like: hub.html?slug=sarveshhub";
+      msgEl.innerText = "Missing slug. Example: hub.html?slug=sarveshhub";
+    }
+
+    copyBtn.onclick = async () => {
+      await navigator.clipboard.writeText(hubUrlInput.value);
+      copyBtn.innerText = "Copied!";
+      setTimeout(() => copyBtn.innerText = "Copy", 1500);
+    };
+
+    downloadBtn.onclick = () => {
+      if (!slug) return;
+      const link = document.createElement("a");
+      link.download = `smart-link-hub-${slug}.png`;
+      link.href = qrCanvas.toDataURL("image/png");
+      link.click();
+    };
+
+    shareBtn.onclick = async () => {
+      if (!slug) return;
+      if (navigator.share) {
+        await navigator.share({ title: "My Smart Link Hub", text: "Check out my Smart Link Hub", url: hubUrl });
+      } else {
+        alert("Sharing not supported on this browser");
+      }
+    };
 
     async function getCountryCode() {
       try {
         const res = await fetch("https://ipapi.co/json/");
         const data = await res.json();
         return (data.country_code || "").toUpperCase();
-      } catch (e) {
-        console.warn("Country detect failed:", e);
+      } catch {
         return "";
       }
     }
 
-    function checkRule(rule, context) {
+    function checkRule(rule, ctx) {
       const now = new Date();
 
-      // TIME rule_value: "09:00-18:00"
+      // TIME: "09:00-18:00" (supports overnight)
       if (rule.rule_type === "time") {
-        const [start, end] = (rule.rule_value || "").split("-");
+        const [start, end] = String(rule.rule_value || "").split("-");
         if (!start || !end) return true;
 
         const [sh, sm] = start.split(":").map(Number);
@@ -109,12 +206,11 @@
         const s = sh * 60 + sm;
         const e = eh * 60 + em;
 
-        // handle overnight (22:00-06:00)
         if (s <= e) return cur >= s && cur <= e;
-        return cur >= s || cur <= e;
+        return cur >= s || cur <= e; // overnight
       }
 
-      // DEVICE rule_value: mobile/desktop
+      // DEVICE: mobile/desktop
       if (rule.rule_type === "device") {
         const isMobile = window.innerWidth < 768;
         if (rule.rule_value === "mobile") return isMobile;
@@ -122,18 +218,17 @@
         return true;
       }
 
-      // COUNTRY rule_value: IN/US/GB...
+      // COUNTRY: IN/US/GB...
       if (rule.rule_type === "country") {
         const target = String(rule.rule_value || "").toUpperCase();
         if (!target) return true;
-        return (context.country || "") === target;
+        return (ctx.country || "") === target;
       }
 
       return true;
     }
 
     function getPriority(link) {
-      // if rules has priority, use max priority
       const arr = link.rules || [];
       return Math.max(...arr.map(r => Number(r.priority || 0)), 0);
     }
@@ -147,10 +242,7 @@
     }
 
     async function loadHub() {
-      if (!slug) {
-        msgEl.innerText = "Missing slug. Example: hub.html?slug=sarveshhub";
-        return;
-      }
+      if (!slug) return;
 
       const countryCode = await getCountryCode();
 
@@ -162,6 +254,7 @@
 
       if (hubError || !hubData) {
         msgEl.innerText = "Hub not found";
+        document.getElementById("hubName").innerText = "Hub not found";
         return;
       }
 
@@ -187,13 +280,11 @@
 
       const ctx = { country: countryCode };
 
-      // filter by rules
       const visible = (links || []).filter(link => {
         const rules = link.rules || [];
         return rules.every(r => checkRule(r, ctx));
       });
 
-      // sort by priority (high first), then created_at
       visible.sort((a, b) => {
         const pa = getPriority(a);
         const pb = getPriority(b);
@@ -227,8 +318,8 @@
             hub_id: link.hub_id,
             clicked_at: new Date().toISOString()
           });
-          if (error) console.warn("Click not tracked:", error.message);
 
+          if (error) console.warn("Click not tracked:", error.message);
           window.open(link.url, "_blank", "noopener");
         };
 
