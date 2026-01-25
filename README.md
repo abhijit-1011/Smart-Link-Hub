@@ -12,6 +12,19 @@ Website Link:
 Repository Link:
 👉 https://github.com/abhijit-1011/Smart-Link-Hub.git
 
+🛠️ Technology Stack-
+Frontend
+
+HTML
+CSS
+JavaScript
+
+Backend & Database
+
+Supabase (Authentication + Database(PostgresSQL))
+Hosting - Netlify
+
+
 🚀 Setup & Installation (Local Run)
 
 Follow these steps to run the project locally:
@@ -135,19 +148,6 @@ Link management
 Rule configuration
 
 Analytics dashboard
-
-
-🛠️ Technology Stack-
-Frontend
-
-HTML
-CSS
-JavaScript
-
-Backend & Database
-
-Supabase (Authentication + Database(PostgresSQL))
-Hosting - Netlify
 
 
 🗂️ Database Tables (Supabase)
