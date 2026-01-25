@@ -155,7 +155,12 @@
 </head>
 
 <body>
-
+<script>
+  history.pushState(null, null, location.href);
+  window.onpopstate = function () {
+    history.go(1);
+  };
+</script>
 <div class="navbar">
   <h2>Smart Link Hub – Dashboard</h2>
   <div>
@@ -228,7 +233,7 @@
 
 <script type="module">
   import { supabase } from "./assets/js/supabase.js";
-
+  
   let user = null;
   let currentHub = null;
 
@@ -251,7 +256,7 @@
     user = data.user;
 
     if (!user) {
-      location.href = "index.html";
+      window.location.replace = "index.html";
       return;
     }
 
