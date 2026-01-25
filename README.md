@@ -21,7 +21,7 @@ JavaScript
 
 Backend & Database
 
-Supabase (Authentication + Database(PostgresSQL))
+Supabase (Authentication + Database(PostgresSQL)) -RLS policies to the table
 Hosting - Netlify
 
 
