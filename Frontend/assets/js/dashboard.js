@@ -3,144 +3,322 @@ import { supabase } from "./supabase.js";
 let user = null;
 let currentHub = null;
 
-// Load when page opens
+// ---------- Helpers ----------
+function $(id) {
+  return document.getElementById(id);
+}
+
+function setMsg(el, text = "", isError = false) {
+  if (!el) return;
+  el.textContent = text;
+  el.classList.toggle("err", !!isError);
+}
+
+function buildHubUrl(slug) {
+  return `${window.location.origin}/hub.html?slug=${encodeURIComponent(slug)}`;
+}
+
+function validSlug(slug) {
+  return /^[a-zA-Z0-9_-]+$/.test(slug);
+}
+
+function setPublicButtons(slug) {
+  const link = slug ? buildHubUrl(slug) : "";
+  const input = $("publicLink");
+  const copyBtn = $("copyPublicBtn");
+  const openBtn = $("openPublicBtn");
+  const viewBtn = $("viewPublicBtn");
+
+  if (input) input.value = link;
+
+  if (copyBtn) {
+    copyBtn.onclick = async () => {
+      if (!link) return alert("Save hub to generate link.");
+      await navigator.clipboard.writeText(link);
+      copyBtn.textContent = "Copied!";
+      setTimeout(() => (copyBtn.textContent = "Copy"), 1200);
+    };
+  }
+
+  if (openBtn) {
+    openBtn.onclick = () => {
+      if (!link) return alert("Save hub to generate link.");
+      window.open(link, "_blank", "noopener");
+    };
+  }
+
+  if (viewBtn) {
+    viewBtn.onclick = () => {
+      if (!link) return alert("Save hub to generate link.");
+      window.open(link, "_blank", "noopener");
+    };
+  }
+}
+
+// ---------- Init ----------
 async function init() {
-
-  // Get logged user
   const { data } = await supabase.auth.getUser();
+  user = data?.user;
 
-  if (!data.user) {
+  if (!user) {
     window.location.href = "login.html";
     return;
   }
 
-  user = data.user;
-
-  await loadHub();
+  await loadHubIfExists();
   await loadLinks();
-  await loadAnalytics();
+  await loadAnalyticsOverview();
+  setUpButtons();
 }
 
-//
-// Create / Load Hub
-//
-async function loadHub() {
+function setUpButtons() {
+  const saveHubBtn = $("saveHubBtn");
+  const addLinkBtn = $("addLinkBtn");
 
-  const { data: hub } = await supabase
+  if (saveHubBtn) saveHubBtn.addEventListener("click", saveHub);
+  if (addLinkBtn) addLinkBtn.addEventListener("click", addLink);
+}
+
+// ---------- Hub ----------
+async function loadHubIfExists() {
+  const hubMsg = $("hubMsg");
+
+  const { data: hub, error } = await supabase
     .from("hubs")
     .select("*")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
-  if (hub) {
-    currentHub = hub;
-    document.getElementById("hubTitle").value = hub.title;
-
-    // Public button
-    document.getElementById("viewPublicBtn").onclick = () => {
-      window.open(`hub.html?slug=${hub.slug}`, "_blank");
-    };
-
+  if (error) {
+    console.error("Hub load error:", error);
+    setMsg(hubMsg, "Failed to load hub: " + error.message, true);
+    setPublicButtons("");
     return;
   }
 
-  // If no hub → create one
-  const slug = user.email.split("@")[0] + Date.now();
+  if (!hub) {
+    currentHub = null;
+    setMsg(hubMsg, "No hub found. Fill details and click Save Hub.");
+    setPublicButtons("");
+    return;
+  }
 
-  const { data: newHub, error } = await supabase
+  currentHub = hub;
+
+  $("hubTitle").value = hub.title || "";
+  $("hubSlug").value = hub.slug || "";
+  $("hubTheme").value = hub.theme || "dark";
+
+  setMsg(hubMsg, "Hub loaded.");
+  setPublicButtons(hub.slug);
+}
+
+async function saveHub() {
+  const hubTitle = $("hubTitle").value.trim();
+  const hubSlug = $("hubSlug").value.trim();
+  const hubTheme = $("hubTheme").value;
+  const hubMsg = $("hubMsg");
+
+  setMsg(hubMsg, "");
+
+  if (!hubTitle || !hubSlug) {
+    setMsg(hubMsg, "Title and Slug are required.", true);
+    return;
+  }
+
+  if (!validSlug(hubSlug)) {
+    setMsg(hubMsg, "Slug allowed: letters, numbers, - and _ (no spaces).", true);
+    return;
+  }
+
+  // upsert by slug (needs UNIQUE constraint on hubs.slug)
+  const payload = {
+    user_id: user.id,
+    title: hubTitle,
+    slug: hubSlug,
+    theme: hubTheme
+  };
+
+  const { data, error } = await supabase
     .from("hubs")
-    .insert({
-      user_id: user.id,
-      title: "My Smart Hub",
-      slug: slug,
-      theme: "dark"
-    })
+    .upsert(payload, { onConflict: "slug" })
     .select()
     .single();
 
   if (error) {
-    console.error("Hub create error:", error.message);
+    console.error("Save hub error:", error);
+    setMsg(hubMsg, "Failed to save hub: " + error.message, true);
     return;
   }
 
-  currentHub = newHub;
+  currentHub = data;
+  setMsg(hubMsg, "Hub saved successfully.");
+  setPublicButtons(data.slug);
+
+  await loadLinks();
+  await loadAnalyticsOverview();
 }
 
-//
-// Load Links
-//
+// ---------- Links ----------
 async function loadLinks() {
+  const linkList = $("linkList");
+  if (!linkList) return;
 
-  if (!currentHub) return;
+  if (!currentHub) {
+    linkList.innerHTML = `<p style="color:#9ca3af">Save hub first.</p>`;
+    return;
+  }
 
-  const { data: links } = await supabase
+  // Use created_at order (works even if "position" column doesn't exist)
+  const { data, error } = await supabase
     .from("links")
-    .select("*")
+    .select("id, hub_id, title, url, is_active, created_at")
     .eq("hub_id", currentHub.id)
-    .order("position");
+    .order("created_at", { ascending: true });
 
-  const list = document.getElementById("linksList");
-  list.innerHTML = "";
+  if (error) {
+    console.error("Load links error:", error);
+    linkList.innerHTML = `<p style="color:#ff6b6b">Failed to load links: ${error.message}</p>`;
+    return;
+  }
 
-  links.forEach(link => {
+  if (!data || data.length === 0) {
+    linkList.innerHTML = `<p style="color:#9ca3af">No links added yet.</p>`;
+    return;
+  }
 
-    const li = document.createElement("li");
-    li.innerText = link.title + " → " + link.url;
+  linkList.innerHTML = "";
 
-    list.appendChild(li);
+  data.forEach((l) => {
+    const div = document.createElement("div");
+    div.className = "link-item";
+    div.innerHTML = `
+      <div class="link-info">
+        <h4>${escapeHtml(l.title || "")}</h4>
+        <p>${escapeHtml(l.url || "")}</p>
+      </div>
+      <button class="btn btn-red" type="button">Delete</button>
+    `;
+
+    div.querySelector("button").addEventListener("click", async () => {
+      await supabase.from("links").delete().eq("id", l.id);
+      await loadLinks();
+      await loadAnalyticsOverview();
+    });
+
+    linkList.appendChild(div);
   });
 }
 
-//
-// Add Link
-//
-document.getElementById("addLinkBtn").addEventListener("click", async () => {
+async function addLink() {
+  const linkTitle = $("linkTitle").value.trim();
+  const linkUrl = $("linkUrl").value.trim();
+  const linkMsg = $("linkMsg");
 
-  const title = document.getElementById("linkTitle").value.trim();
-  const url = document.getElementById("linkUrl").value.trim();
+  setMsg(linkMsg, "");
 
-  if (!title || !url || !currentHub) return;
-
-  const { error } = await supabase
-    .from("links")
-    .insert({
-      hub_id: currentHub.id,
-      title: title,
-      url: url,
-      is_active: true,
-      position: Date.now()
-    });
-
-  if (error) {
-    console.error("Add link error:", error.message);
+  if (!currentHub) {
+    setMsg(linkMsg, "Save your hub first.", true);
     return;
   }
 
-  document.getElementById("linkTitle").value = "";
-  document.getElementById("linkUrl").value = "";
+  if (!linkTitle || !linkUrl) {
+    setMsg(linkMsg, "Title and URL are required.", true);
+    return;
+  }
+
+  // Insert WITHOUT position (so it won't crash if column not present)
+  const { error } = await supabase.from("links").insert({
+    hub_id: currentHub.id,
+    title: linkTitle,
+    url: linkUrl,
+    is_active: true
+  });
+
+  if (error) {
+    console.error("Add link error:", error);
+    setMsg(linkMsg, "Failed to add link: " + error.message, true);
+    return;
+  }
+
+  $("linkTitle").value = "";
+  $("linkUrl").value = "";
+  setMsg(linkMsg, "Link saved.");
 
   await loadLinks();
-});
+  await loadAnalyticsOverview();
+}
 
-//
-// Analytics
-//
-async function loadAnalytics() {
+// ---------- Analytics ----------
+async function loadAnalyticsOverview() {
+  // defaults
+  $("totalVisits").textContent = "0";
+  $("totalClicks").textContent = "0";
+  $("topLink").textContent = "—";
 
   if (!currentHub) return;
 
-  const { count } = await supabase
-    .from("click_events")
-    .select("*", { count: "exact", head: true });
+  // 1) Visits (requires hub_visits table + policies)
+  const { count: visitCount, error: vErr } = await supabase
+    .from("hub_visits")
+    .select("id", { count: "exact", head: true })
+    .eq("hub_id", currentHub.id);
 
-  document.getElementById("totalClicks").innerText =
-    count || 0;
+  if (!vErr) {
+    $("totalVisits").textContent = String(visitCount || 0);
+  } else {
+    console.warn("Visits not loading:", vErr.message);
+  }
+
+  // 2) Clicks count (filter by current hub!)
+  const { count: clickCount, error: cErr } = await supabase
+    .from("click_events")
+    .select("id", { count: "exact", head: true })
+    .eq("hub_id", currentHub.id);
+
+  if (!cErr) {
+    $("totalClicks").textContent = String(clickCount || 0);
+  } else {
+    console.warn("Clicks not loading:", cErr.message);
+  }
+
+  // 3) Top link (get click list + link titles)
+  const { data: clicks, error: topErr } = await supabase
+    .from("click_events")
+    .select("link_id, links(title)")
+    .eq("hub_id", currentHub.id);
+
+  if (topErr) {
+    console.warn("Top link not loading:", topErr.message);
+    return;
+  }
+
+  const map = {};
+  (clicks || []).forEach((c) => {
+    const title = c?.links?.title || "Unknown";
+    map[title] = (map[title] || 0) + 1;
+  });
+
+  let best = "—";
+  let bestCnt = 0;
+  for (const [t, cnt] of Object.entries(map)) {
+    if (cnt > bestCnt) {
+      bestCnt = cnt;
+      best = t;
+    }
+  }
+
+  $("topLink").textContent = best;
 }
 
-// Logout
-document.getElementById("logoutBtn").addEventListener("click", async () => {
-  await supabase.auth.signOut();
-  window.location.href = "login.html";
-});
+// ---------- Security helper ----------
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
 
 init();

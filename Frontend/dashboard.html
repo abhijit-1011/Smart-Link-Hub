@@ -26,7 +26,9 @@
       border-bottom:1px solid #111;
       align-items:center;
     }
+
     .navbar h2 { color:var(--green); margin:0; }
+
     .navbar button {
       background:transparent;
       border:1px solid var(--green);
@@ -69,6 +71,7 @@
     }
 
     .btn-green { background:var(--green); color:#000; }
+
     .btn-red {
       background:transparent;
       border:1px solid red;
@@ -112,6 +115,7 @@
     }
   </style>
 </head>
+
 <body>
 
 <div class="navbar">
@@ -124,41 +128,52 @@
 
 <div class="container">
 
+  <!-- HUB SETTINGS -->
   <div class="card">
     <h3>Hub Settings</h3>
+
     <input id="hubTitle" placeholder="Hub Title">
-    <input id="hubSlug" placeholder="Hub Slug (unique like sarvesh-hub)">
+    <input id="hubSlug" placeholder="Hub Slug (unique)">
     <select id="hubTheme">
       <option value="dark">Dark</option>
       <option value="light">Light</option>
       <option value="neon">Neon</option>
     </select>
+
     <button class="btn btn-green" id="saveHubBtn">Save Hub</button>
     <p id="hubMsg" style="color: var(--muted); margin:8px 0 0;"></p>
   </div>
 
+  <!-- ADD LINK -->
   <div class="card">
     <h3>Add Link</h3>
+
     <input id="linkTitle" placeholder="Link Title">
     <input id="linkUrl" placeholder="https://example.com">
+
     <button class="btn btn-green" id="addLinkBtn">Save Link</button>
     <p id="linkMsg" style="color: var(--muted); margin:8px 0 0;"></p>
   </div>
 
+  <!-- LINKS -->
   <h3>Your Links</h3>
   <div id="linkList"></div>
 
+  <!-- ANALYTICS OVERVIEW -->
   <div class="card">
     <h3>Analytics Overview</h3>
+
     <div class="analytics">
       <div class="stat">
-        <h2 id="totalVisits">—</h2>
+        <h2 id="totalVisits">0</h2>
         <p>Total Hub Visits</p>
       </div>
+
       <div class="stat">
         <h2 id="totalClicks">0</h2>
         <p>Total Link Clicks</p>
       </div>
+
       <div class="stat">
         <h2 id="topLink">—</h2>
         <p>Top Performing Link</p>
@@ -166,351 +181,260 @@
     </div>
   </div>
 
+  <!-- ANALYTICS CARDS -->
   <div class="card">
     <h3>Clicks by Link</h3>
-    <div id="analytics">No clicks yet</div>
+    <div id="analytics">Loading...</div>
   </div>
 
 </div>
 
+
 <script type="module">
-  import { supabase } from "./assets/js/supabase.js";
+import { supabase } from "./assets/js/supabase.js";
 
-  let user = null;
-  let currentHub = null;
+let user = null;
+let currentHub = null;
 
-  const hubTitle = document.getElementById("hubTitle");
-  const hubSlug  = document.getElementById("hubSlug");
-  const hubTheme = document.getElementById("hubTheme");
-  const hubMsg   = document.getElementById("hubMsg");
 
-  const linkTitle = document.getElementById("linkTitle");
-  const linkUrl   = document.getElementById("linkUrl");
-  const linkMsg   = document.getElementById("linkMsg");
+// ---------------- INIT ----------------
+async function init() {
 
-  const viewPublicBtn = document.getElementById("viewPublicBtn");
-  const saveHubBtn = document.getElementById("saveHubBtn");
-  const addLinkBtn = document.getElementById("addLinkBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
+  const { data } = await supabase.auth.getUser();
+  user = data.user;
 
-  // ----------------------
-  // Prevent backward navigation after logout
-  // ----------------------
-  function preventBackNavigation() {
-    history.pushState(null, null, location.href);
-    window.onpopstate = () => history.go(1);
-  }
-
-  // ----------------------
-  // Init dashboard
-  // ----------------------
-  async function init() {
-    const { data } = await supabase.auth.getUser();
-    user = data.user;
-
-    if (!user) {
-      location.href = "index.html";
-      return;
-    }
-
-    preventBackNavigation(); // block back
-
-    await loadHubIfExists();
-    await loadLinks();
-    await loadAnalyticsOverview();
-    await loadAnalyticsCards();
-  }
-
-  // ----------------------
-  // Load hub if exists
-  // ----------------------
-  async function loadHubIfExists() {
-    const { data: hubs, error } = await supabase
-      .from("hubs")
-      .select("*")
-      .eq("user_id", user.id)
-      .limit(1);
-
-    if (error) console.error("Hub load error:", error);
-
-    const hub = (hubs && hubs.length > 0) ? hubs[0] : null;
-
-    if (hub) {
-      currentHub = hub;
-      hubTitle.value = hub.title || "";
-      hubSlug.value = hub.slug || "";
-      hubTheme.value = hub.theme || "dark";
-      setPublicButton(hub.slug);
-      hubMsg.innerText = "Hub loaded.";
-      // ✅ Set total visits from hub.visit_count
-      document.getElementById("totalVisits").innerText = hub.visit_count || 0;
-    } else {
-      currentHub = null;
-      hubMsg.innerText = "No hub found. Please create your hub and click Save Hub.";
-      setPublicButton("");
-      document.getElementById("totalVisits").innerText = "0";
-    }
-  }
-
-  // ----------------------
-  // Public hub button
-  // ----------------------
-  function setPublicButton(slug) {
-    if (!slug) {
-      viewPublicBtn.onclick = () => alert("Create/Save your hub first.");
-      return;
-    }
-    viewPublicBtn.onclick = () =>
-      window.open(`hub.html?slug=${encodeURIComponent(slug)}`, "_blank");
-  }
-
-  // ----------------------
-  // Save hub
-  // ----------------------
-  function validSlug(slug) {
-    return /^[a-zA-Z0-9_-]+$/.test(slug);
-  }
-
-  saveHubBtn.addEventListener("click", async () => {
-    hubMsg.innerText = "";
-
-    if (!user?.id) {
-      hubMsg.innerText = "Session expired. Please login again.";
-      return;
-    }
-
-    const title = hubTitle.value.trim();
-    const slug = hubSlug.value.trim();
-    const theme = hubTheme.value;
-
-    if (!title || !slug) {
-      hubMsg.innerText = "Title and Slug are required.";
-      return;
-    }
-
-    if (!validSlug(slug)) {
-      hubMsg.innerText = "Slug only allowed: letters, numbers, - and _ (no spaces).";
-      return;
-    }
-
-    const payload = { user_id: user.id, title, slug, theme };
-
-    const { data, error } = await supabase
-      .from("hubs")
-      .upsert(payload, { onConflict: "slug" })
-      .select();
-
-    if (error) {
-      console.error("Save hub error FULL:", error);
-      hubMsg.innerText = "Failed to save hub: " + error.message;
-      return;
-    }
-
-    const savedHub = data?.[0] || null;
-    if (!savedHub) {
-      hubMsg.innerText = "Hub saved, but could not fetch saved row.";
-      await loadHubIfExists();
-      return;
-    }
-
-    currentHub = savedHub;
-    hubMsg.innerText = "Hub saved successfully.";
-    setPublicButton(savedHub.slug);
-
-    document.getElementById("totalVisits").innerText = savedHub.visit_count || 0;
-
-    await loadLinks();
-    await loadAnalyticsOverview();
-    await loadAnalyticsCards();
-  });
-
-  // ----------------------
-  // Add link
-  // ----------------------
-  addLinkBtn.addEventListener("click", async () => {
-    linkMsg.innerText = "";
-
-    if (!currentHub) {
-      linkMsg.innerText = "Save your hub first.";
-      return;
-    }
-
-    const title = linkTitle.value.trim();
-    const url = linkUrl.value.trim();
-
-    if (!title || !url) {
-      linkMsg.innerText = "Title and URL are required.";
-      return;
-    }
-
-    const { error } = await supabase
-      .from("links")
-      .insert({
-        hub_id: currentHub.id,
-        title,
-        url,
-        is_active: true,
-        position: Date.now()
-      });
-
-    if (error) {
-      console.error("Add link error:", error);
-      linkMsg.innerText = "Failed to add link: " + error.message;
-      return;
-    }
-
-    linkTitle.value = "";
-    linkUrl.value = "";
-    linkMsg.innerText = "Link saved.";
-
-    await loadLinks();
-    await loadAnalyticsOverview();
-    await loadAnalyticsCards();
-  });
-
-  // ----------------------
-  // Load links
-  // ----------------------
-  async function loadLinks() {
-    if (!currentHub) {
-      document.getElementById("linkList").innerHTML =
-        "<p style='color:var(--muted)'>Save hub first.</p>";
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("links")
-      .select("*")
-      .eq("hub_id", currentHub.id)
-      .order("position");
-
-    if (error) {
-      console.error("Load links error:", error);
-      return;
-    }
-
-    const linkList = document.getElementById("linkList");
-    linkList.innerHTML = "";
-
-    (data || []).forEach(l => {
-      const div = document.createElement("div");
-      div.className = "link-item";
-      div.innerHTML = `
-        <div class="link-info">
-          <h4>${l.title}</h4>
-          <p>${l.url}</p>
-        </div>
-        <button class="btn btn-red">Delete</button>
-      `;
-
-      div.querySelector("button").addEventListener("click", async () => {
-        await supabase.from("links").delete().eq("id", l.id);
-        await loadLinks();
-        await loadAnalyticsOverview();
-        await loadAnalyticsCards();
-      });
-
-      linkList.appendChild(div);
-    });
-
-    if (!data || data.length === 0) {
-      linkList.innerHTML = "<p style='color:var(--muted)'>No links added yet.</p>";
-    }
-  }
-
-  // ----------------------
-  // Analytics overview
-  // ----------------------
-  async function loadAnalyticsOverview() {
-    if (!currentHub) return;
-
-    const { data: clicks, error } = await supabase
-      .from("click_events")
-      .select(`id, links ( title, hub_id )`);
-
-    if (error) {
-      console.error("Analytics error:", error);
-      document.getElementById("totalClicks").innerText = "0";
-      document.getElementById("topLink").innerText = "—";
-      return;
-    }
-
-    const filtered = (clicks || []).filter(c => c.links?.hub_id === currentHub.id);
-    document.getElementById("totalClicks").innerText = String(filtered.length);
-
-    const map = {};
-    filtered.forEach(c => {
-      const t = c.links?.title || "Unknown";
-      map[t] = (map[t] || 0) + 1;
-    });
-
-    let top = "—";
-    let max = 0;
-    for (const [t, cnt] of Object.entries(map)) {
-      if (cnt > max) { max = cnt; top = t; }
-    }
-    document.getElementById("topLink").innerText = top;
-  }
-
-  // ----------------------
-  // Analytics cards
-  // ----------------------
-  async function loadAnalyticsCards() {
-    const container = document.getElementById("analytics");
-    if (!container) return;
-
-    if (!currentHub) {
-      container.innerText = "Save hub first.";
-      return;
-    }
-
-    const { data: clicks, error } = await supabase
-      .from("click_events")
-      .select(`id, clicked_at, links ( title, hub_id )`)
-      .order("clicked_at", { ascending: false });
-
-    if (error) {
-      console.error("Cards analytics error:", error);
-      container.innerText = "Failed to load analytics";
-      return;
-    }
-
-    const filtered = (clicks || []).filter(c => c.links?.hub_id === currentHub.id);
-
-    if (!filtered.length) {
-      container.innerText = "No clicks yet";
-      return;
-    }
-
-    const stats = {};
-    filtered.forEach(c => {
-      const title = c.links?.title || "Unknown Link";
-      stats[title] = (stats[title] || 0) + 1;
-    });
-
-    container.innerHTML = "";
-    Object.entries(stats).forEach(([title, count]) => {
-      const div = document.createElement("div");
-      div.style.cssText =
-        "background:#050505;border:1px solid #111;border-radius:12px;padding:14px;margin-bottom:10px;";
-      div.innerHTML =
-        `<strong style="color:var(--green)">${title}</strong>
-         <p style="color:var(--muted);margin:6px 0 0">Total Clicks: ${count}</p>`;
-      container.appendChild(div);
-    });
-  }
-
-  // ----------------------
-  // Logout
-  // ----------------------
-  logoutBtn.addEventListener("click", async () => {
-    await supabase.auth.signOut();
-    history.pushState(null, null, location.href);
-    window.onpopstate = () => history.go(1);
+  if (!user) {
     location.href = "index.html";
+    return;
+  }
+
+  await loadHub();
+  await loadLinks();
+  await loadAnalytics();
+}
+
+
+
+// ---------------- LOAD HUB ----------------
+async function loadHub() {
+
+  const { data, error } = await supabase
+    .from("hubs")
+    .select("*")
+    .eq("user_id", user.id)
+    .limit(1);
+
+  if (error || !data.length) {
+    document.getElementById("hubMsg").innerText =
+      "Create your hub first.";
+    return;
+  }
+
+  currentHub = data[0];
+
+  hubTitle.value = currentHub.title || "";
+  hubSlug.value = currentHub.slug || "";
+  hubTheme.value = currentHub.theme || "dark";
+
+  viewPublicBtn.onclick = () =>
+    window.open(`hub.html?slug=${currentHub.slug}`, "_blank");
+}
+
+
+
+// ---------------- SAVE HUB ----------------
+saveHubBtn.onclick = async () => {
+
+  const title = hubTitle.value.trim();
+  const slug  = hubSlug.value.trim();
+  const theme = hubTheme.value;
+
+  if (!title || !slug) {
+    hubMsg.innerText = "Title & Slug required";
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("hubs")
+    .upsert({
+      user_id: user.id,
+      title,
+      slug,
+      theme
+    })
+    .select();
+
+  if (error) {
+    hubMsg.innerText = error.message;
+    return;
+  }
+
+  currentHub = data[0];
+  hubMsg.innerText = "Saved";
+
+  await loadAnalytics();
+};
+
+
+
+// ---------------- ADD LINK ----------------
+addLinkBtn.onclick = async () => {
+
+  if (!currentHub) return;
+
+  const title = linkTitle.value.trim();
+  const url   = linkUrl.value.trim();
+
+  if (!title || !url) return;
+
+  await supabase.from("links").insert({
+    hub_id: currentHub.id,
+    title,
+    url,
+    is_active: true
   });
 
-  init();
+  linkTitle.value = "";
+  linkUrl.value = "";
+
+  await loadLinks();
+  await loadAnalytics();
+};
+
+
+
+// ---------------- LOAD LINKS ----------------
+async function loadLinks() {
+
+  if (!currentHub) return;
+
+  const { data } = await supabase
+    .from("links")
+    .select("*")
+    .eq("hub_id", currentHub.id);
+
+  const list = document.getElementById("linkList");
+  list.innerHTML = "";
+
+  if (!data.length) {
+    list.innerHTML = "<p style='color:#888'>No links yet</p>";
+    return;
+  }
+
+  data.forEach(l => {
+
+    const div = document.createElement("div");
+    div.className = "link-item";
+
+    div.innerHTML = `
+      <div class="link-info">
+        <h4>${l.title}</h4>
+        <p>${l.url}</p>
+      </div>
+      <button class="btn btn-red">Delete</button>
+    `;
+
+    div.querySelector("button").onclick = async () => {
+      await supabase.from("links").delete().eq("id", l.id);
+      loadLinks();
+      loadAnalytics();
+    };
+
+    list.appendChild(div);
+  });
+}
+
+
+
+// ---------------- ANALYTICS ----------------
+async function loadAnalytics() {
+
+  if (!currentHub) return;
+
+
+  // -------- VISITS --------
+  const { data: visits } = await supabase
+    .from("hub_visits")
+    .select("id")
+    .eq("hub_id", currentHub.id);
+
+  document.getElementById("totalVisits").innerText =
+    visits?.length || 0;
+
+
+
+  // -------- CLICKS --------
+  const { data: clicks } = await supabase
+    .from("click_events")
+    .select(`id, links ( title, hub_id )`);
+
+  const filtered = (clicks || []).filter(
+    c => c.links?.hub_id === currentHub.id
+  );
+
+
+  document.getElementById("totalClicks").innerText =
+    filtered.length;
+
+
+  // -------- TOP LINK --------
+  const map = {};
+
+  filtered.forEach(c => {
+    const t = c.links?.title || "Unknown";
+    map[t] = (map[t] || 0) + 1;
+  });
+
+  let top = "—", max = 0;
+
+  for (const k in map) {
+    if (map[k] > max) {
+      max = map[k];
+      top = k;
+    }
+  }
+
+  document.getElementById("topLink").innerText = top;
+
+
+
+  // -------- CARDS --------
+  const box = document.getElementById("analytics");
+  box.innerHTML = "";
+
+  if (!filtered.length) {
+    box.innerText = "No clicks yet";
+    return;
+  }
+
+  for (const k in map) {
+
+    const div = document.createElement("div");
+
+    div.style.cssText =
+      "background:#050505;border:1px solid #111;border-radius:12px;padding:14px;margin-bottom:10px;";
+
+    div.innerHTML = `
+      <strong style="color:var(--green)">${k}</strong>
+      <p style="color:#aaa;margin-top:6px">
+        Total Clicks: ${map[k]}
+      </p>
+    `;
+
+    box.appendChild(div);
+  }
+}
+
+
+
+// ---------------- LOGOUT ----------------
+logoutBtn.onclick = async () => {
+  await supabase.auth.signOut();
+  location.href = "index.html";
+};
+
+
+init();
 </script>
 
 </body>

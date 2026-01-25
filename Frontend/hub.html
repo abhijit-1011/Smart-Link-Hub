@@ -76,13 +76,20 @@
       padding: 16px;
       cursor: pointer;
       transition: all 0.25s ease;
+      text-align: left;
     }
     .link-card:hover { border-color: var(--green); box-shadow: 0 0 16px rgba(0,255,102,0.2); transform: translateY(-2px); }
 
     .link-title { color: var(--green); font-size: 1.05rem; font-weight: 600; }
-    .link-desc { color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
+    .link-desc { color: var(--muted); font-size: 0.85rem; margin-top: 6px; word-break: break-all; }
 
     footer { margin-top: 40px; font-size: 0.8rem; color: var(--muted); }
+
+    .error {
+      margin-top: 10px;
+      color: #ff6b6b;
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 
@@ -94,6 +101,7 @@
     <div class="profile">
       <h1 id="hubName">@smartlink</h1>
       <p id="hubDesc">All my important links in one place</p>
+      <div id="msg" class="error"></div>
     </div>
 
     <!-- HUB URL -->
@@ -128,9 +136,12 @@
     import { supabase } from "./assets/js/supabase.js";
 
     const params = new URLSearchParams(window.location.search);
-    const slug = params.get("slug") || "demo";
+    const slug = (params.get("slug") || "").trim();
 
-    const hubUrl = `${window.location.origin}/hub.html?slug=${slug}`;
+    const msgEl = document.getElementById("msg");
+
+    // Build public URL (this is what QR should contain)
+    const hubUrl = `${window.location.origin}/hub.html?slug=${encodeURIComponent(slug)}`;
 
     const hubUrlInput = document.getElementById("hubUrl");
     const copyBtn = document.getElementById("copyBtn");
@@ -138,18 +149,23 @@
     const downloadBtn = document.getElementById("downloadQR");
     const shareBtn = document.getElementById("shareQR");
 
-    hubUrlInput.value = hubUrl;
-
-    // Generate QR
-    QRCode.toCanvas(qrCanvas, hubUrl, { width: 140, margin: 2 });
+    // Copy/QR only if slug exists
+    if (slug) {
+      hubUrlInput.value = hubUrl;
+      QRCode.toCanvas(qrCanvas, hubUrl, { width: 140, margin: 2 });
+    } else {
+      hubUrlInput.value = "Missing slug. Open like: hub.html?slug=sarveshhub";
+      msgEl.innerText = "Missing slug. Example: hub.html?slug=sarveshhub";
+    }
 
     copyBtn.onclick = async () => {
-      await navigator.clipboard.writeText(hubUrl);
+      await navigator.clipboard.writeText(hubUrlInput.value);
       copyBtn.innerText = "Copied!";
       setTimeout(() => copyBtn.innerText = "Copy", 1500);
     };
 
     downloadBtn.onclick = () => {
+      if (!slug) return;
       const link = document.createElement("a");
       link.download = `smart-link-hub-${slug}.png`;
       link.href = qrCanvas.toDataURL("image/png");
@@ -157,39 +173,68 @@
     };
 
     shareBtn.onclick = async () => {
+      if (!slug) return;
       if (navigator.share) {
         await navigator.share({ title: "My Smart Link Hub", text: "Check out my Smart Link Hub", url: hubUrl });
-      } else { alert("Sharing not supported on this browser"); }
+      } else {
+        alert("Sharing not supported on this browser");
+      }
     };
 
-    async function loadHub() {
-      // Fetch hub data
-      const { data: hubData } = await supabase
-        .from("hubs")
-        .select("*")
-        .eq("slug", slug)
-        .single();
+    async function trackVisit(hubId) {
+      // ✅ Correct analytics method: insert into hub_visits table
+      // (this is what your dashboard analytics should count)
+      const { error } = await supabase.from("hub_visits").insert({
+        hub_id: hubId,
+        visited_at: new Date().toISOString()
+      });
 
-      if (!hubData) {
+      // If policy/table not ready, don't break the page
+      if (error) console.warn("Visit not tracked:", error.message);
+    }
+
+    async function loadHub() {
+      if (!slug) return;
+
+      // ✅ Use correct columns: hubs table has title/slug/theme/id/user_id etc.
+      const { data: hubData, error: hubError } = await supabase
+        .from("hubs")
+        .select("id, title, slug, theme")
+        .eq("slug", slug)
+        .maybeSingle();
+
+      if (hubError) {
+        console.error("Hub fetch error:", hubError);
+        msgEl.innerText = hubError.message;
         document.getElementById("hubName").innerText = "Hub not found";
         return;
       }
 
-      document.getElementById("hubName").innerText = hubData.name || "@smartlink";
-      document.getElementById("hubDesc").innerText = hubData.description || "All my important links in one place";
+      if (!hubData) {
+        msgEl.innerText = "Hub not found";
+        document.getElementById("hubName").innerText = "Hub not found";
+        return;
+      }
 
-      // ✅ Increment visit count on each page load
-      await supabase
-        .from("hubs")
-        .update({ visit_count: (hubData.visit_count || 0) + 1 })
-        .eq("id", hubData.id);
+      document.getElementById("hubName").innerText = hubData.title || ("@" + hubData.slug);
+      document.getElementById("hubDesc").innerText = "All my important links in one place";
 
-      const { data: links } = await supabase
+      // ✅ Track visit
+      trackVisit(hubData.id);
+
+      // ✅ Load links (no position column → use created_at)
+      const { data: links, error: linksError } = await supabase
         .from("links")
-        .select("*")
+        .select("id, hub_id, title, url, is_active, created_at")
         .eq("hub_id", hubData.id)
         .eq("is_active", true)
-        .order("position");
+        .order("created_at", { ascending: true });
+
+      if (linksError) {
+        console.error("Links fetch error:", linksError);
+        msgEl.innerText = "Failed to load links: " + linksError.message;
+        return;
+      }
 
       renderLinks(links || []);
     }
@@ -198,26 +243,43 @@
       const container = document.getElementById("links");
       container.innerHTML = "";
 
+      if (!links.length) {
+        container.innerHTML = `<div class="error">No links added yet</div>`;
+        return;
+      }
+
       links.forEach(link => {
         const div = document.createElement("div");
         div.className = "link-card";
         div.innerHTML = `
-          <div class="link-title">${link.title}</div>
-          <div class="link-desc">${link.description || ""}</div>
+          <div class="link-title">${escapeHtml(link.title || link.url)}</div>
+          <div class="link-desc">${escapeHtml(link.url || "")}</div>
         `;
 
         div.onclick = async () => {
-          await supabase.from("click_events").insert({
+          // ✅ Track click event
+          const { error } = await supabase.from("click_events").insert({
             link_id: link.id,
             hub_id: link.hub_id,
-            clicked_at: new Date()
+            clicked_at: new Date().toISOString()
           });
 
-          window.open(link.url, "_blank");
+          if (error) console.warn("Click not tracked:", error.message);
+
+          window.open(link.url, "_blank", "noopener");
         };
 
         container.appendChild(div);
       });
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
     }
 
     loadHub();
