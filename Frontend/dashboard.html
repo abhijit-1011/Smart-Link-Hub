@@ -71,7 +71,6 @@
     }
 
     .btn-green { background:var(--green); color:#000; }
-
     .btn-red {
       background:transparent;
       border:1px solid red;
@@ -79,19 +78,58 @@
     }
 
     .link-item {
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
       background:#050505;
       border:1px solid #111;
       border-radius:12px;
       padding:14px;
-      margin-bottom:10px;
-      gap: 12px;
+      margin-bottom:12px;
+    }
+
+    .link-top {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
     }
 
     .link-info h4 { color:var(--green); margin:0 0 4px; }
-    .link-info p { color:var(--muted); font-size:0.85rem; margin: 2px 0; }
+    .link-info p { color:var(--muted); font-size:0.85rem; margin: 2px 0; word-break: break-all; }
+
+    .rule-box{
+      margin-top:12px;
+      padding:12px;
+      border:1px solid #222;
+      border-radius:10px;
+      background:#070707;
+    }
+
+    .rule-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .rule-row > *{
+      flex:1;
+      min-width:180px;
+    }
+
+    .time-range{
+      display:none;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .time-range input{
+      flex:1;
+      min-width:160px;
+      margin-bottom:0;
+    }
+
+    .inline{
+      margin-bottom:0;
+    }
 
     .analytics {
       display:grid;
@@ -156,7 +194,7 @@
   </div>
 
   <!-- LINKS -->
-  <h3>Your Links</h3>
+  <h3>Your Links + Rules</h3>
   <div id="linkList"></div>
 
   <!-- ANALYTICS OVERVIEW -->
@@ -181,7 +219,6 @@
     </div>
   </div>
 
-  <!-- ANALYTICS CARDS -->
   <div class="card">
     <h3>Clicks by Link</h3>
     <div id="analytics">Loading...</div>
@@ -189,252 +226,482 @@
 
 </div>
 
-
 <script type="module">
-import { supabase } from "./assets/js/supabase.js";
+  import { supabase } from "./assets/js/supabase.js";
 
-let user = null;
-let currentHub = null;
+  let user = null;
+  let currentHub = null;
 
+  const hubTitle = document.getElementById("hubTitle");
+  const hubSlug  = document.getElementById("hubSlug");
+  const hubTheme = document.getElementById("hubTheme");
+  const hubMsg   = document.getElementById("hubMsg");
 
-// ---------------- INIT ----------------
-async function init() {
+  const linkTitle = document.getElementById("linkTitle");
+  const linkUrl   = document.getElementById("linkUrl");
+  const linkMsg   = document.getElementById("linkMsg");
 
-  const { data } = await supabase.auth.getUser();
-  user = data.user;
+  const viewPublicBtn = document.getElementById("viewPublicBtn");
+  const saveHubBtn = document.getElementById("saveHubBtn");
+  const addLinkBtn = document.getElementById("addLinkBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
 
-  if (!user) {
-    location.href = "index.html";
-    return;
+  async function init() {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+
+    if (!user) {
+      location.href = "index.html";
+      return;
+    }
+
+    await loadHubIfExists();
+    await loadLinks();
+    await loadAnalyticsOverview();
+    await loadAnalyticsCards();
   }
 
-  await loadHub();
-  await loadLinks();
-  await loadAnalytics();
-}
+  async function loadHubIfExists() {
+    const { data: hubs, error } = await supabase
+      .from("hubs")
+      .select("*")
+      .eq("user_id", user.id)
+      .limit(1);
 
+    if (error) console.error("Hub load error:", error);
 
+    const hub = (hubs && hubs.length > 0) ? hubs[0] : null;
 
-// ---------------- LOAD HUB ----------------
-async function loadHub() {
-
-  const { data, error } = await supabase
-    .from("hubs")
-    .select("*")
-    .eq("user_id", user.id)
-    .limit(1);
-
-  if (error || !data.length) {
-    document.getElementById("hubMsg").innerText =
-      "Create your hub first.";
-    return;
-  }
-
-  currentHub = data[0];
-
-  hubTitle.value = currentHub.title || "";
-  hubSlug.value = currentHub.slug || "";
-  hubTheme.value = currentHub.theme || "dark";
-
-  viewPublicBtn.onclick = () =>
-    window.open(`hub.html?slug=${currentHub.slug}`, "_blank");
-}
-
-
-
-// ---------------- SAVE HUB ----------------
-saveHubBtn.onclick = async () => {
-
-  const title = hubTitle.value.trim();
-  const slug  = hubSlug.value.trim();
-  const theme = hubTheme.value;
-
-  if (!title || !slug) {
-    hubMsg.innerText = "Title & Slug required";
-    return;
-  }
-
-  const { data, error } = await supabase
-    .from("hubs")
-    .upsert({
-      user_id: user.id,
-      title,
-      slug,
-      theme
-    })
-    .select();
-
-  if (error) {
-    hubMsg.innerText = error.message;
-    return;
-  }
-
-  currentHub = data[0];
-  hubMsg.innerText = "Saved";
-
-  await loadAnalytics();
-};
-
-
-
-// ---------------- ADD LINK ----------------
-addLinkBtn.onclick = async () => {
-
-  if (!currentHub) return;
-
-  const title = linkTitle.value.trim();
-  const url   = linkUrl.value.trim();
-
-  if (!title || !url) return;
-
-  await supabase.from("links").insert({
-    hub_id: currentHub.id,
-    title,
-    url,
-    is_active: true
-  });
-
-  linkTitle.value = "";
-  linkUrl.value = "";
-
-  await loadLinks();
-  await loadAnalytics();
-};
-
-
-
-// ---------------- LOAD LINKS ----------------
-async function loadLinks() {
-
-  if (!currentHub) return;
-
-  const { data } = await supabase
-    .from("links")
-    .select("*")
-    .eq("hub_id", currentHub.id);
-
-  const list = document.getElementById("linkList");
-  list.innerHTML = "";
-
-  if (!data.length) {
-    list.innerHTML = "<p style='color:#888'>No links yet</p>";
-    return;
-  }
-
-  data.forEach(l => {
-
-    const div = document.createElement("div");
-    div.className = "link-item";
-
-    div.innerHTML = `
-      <div class="link-info">
-        <h4>${l.title}</h4>
-        <p>${l.url}</p>
-      </div>
-      <button class="btn btn-red">Delete</button>
-    `;
-
-    div.querySelector("button").onclick = async () => {
-      await supabase.from("links").delete().eq("id", l.id);
-      loadLinks();
-      loadAnalytics();
-    };
-
-    list.appendChild(div);
-  });
-}
-
-
-
-// ---------------- ANALYTICS ----------------
-async function loadAnalytics() {
-
-  if (!currentHub) return;
-
-
-  // -------- VISITS --------
-  const { data: visits } = await supabase
-    .from("hub_visits")
-    .select("id")
-    .eq("hub_id", currentHub.id);
-
-  document.getElementById("totalVisits").innerText =
-    visits?.length || 0;
-
-
-
-  // -------- CLICKS --------
-  const { data: clicks } = await supabase
-    .from("click_events")
-    .select(`id, links ( title, hub_id )`);
-
-  const filtered = (clicks || []).filter(
-    c => c.links?.hub_id === currentHub.id
-  );
-
-
-  document.getElementById("totalClicks").innerText =
-    filtered.length;
-
-
-  // -------- TOP LINK --------
-  const map = {};
-
-  filtered.forEach(c => {
-    const t = c.links?.title || "Unknown";
-    map[t] = (map[t] || 0) + 1;
-  });
-
-  let top = "—", max = 0;
-
-  for (const k in map) {
-    if (map[k] > max) {
-      max = map[k];
-      top = k;
+    if (hub) {
+      currentHub = hub;
+      hubTitle.value = hub.title || "";
+      hubSlug.value = hub.slug || "";
+      hubTheme.value = hub.theme || "dark";
+      setPublicButton(hub.slug);
+      hubMsg.innerText = "Hub loaded.";
+    } else {
+      currentHub = null;
+      hubMsg.innerText = "No hub found. Please create your hub and click Save Hub.";
+      setPublicButton("");
     }
   }
 
-  document.getElementById("topLink").innerText = top;
-
-
-
-  // -------- CARDS --------
-  const box = document.getElementById("analytics");
-  box.innerHTML = "";
-
-  if (!filtered.length) {
-    box.innerText = "No clicks yet";
-    return;
+  function setPublicButton(slug) {
+    if (!slug) {
+      viewPublicBtn.onclick = () => alert("Create/Save your hub first.");
+      return;
+    }
+    viewPublicBtn.onclick = () =>
+      window.open(`hub.html?slug=${encodeURIComponent(slug)}`, "_blank");
   }
 
-  for (const k in map) {
-
-    const div = document.createElement("div");
-
-    div.style.cssText =
-      "background:#050505;border:1px solid #111;border-radius:12px;padding:14px;margin-bottom:10px;";
-
-    div.innerHTML = `
-      <strong style="color:var(--green)">${k}</strong>
-      <p style="color:#aaa;margin-top:6px">
-        Total Clicks: ${map[k]}
-      </p>
-    `;
-
-    box.appendChild(div);
+  function validSlug(slug) {
+    return /^[a-zA-Z0-9_-]+$/.test(slug);
   }
-}
 
+  saveHubBtn.addEventListener("click", async () => {
+    hubMsg.innerText = "";
 
+    const title = hubTitle.value.trim();
+    const slug = hubSlug.value.trim();
+    const theme = hubTheme.value;
 
-// ---------------- LOGOUT ----------------
-logoutBtn.onclick = async () => {
-  await supabase.auth.signOut();
-  location.href = "index.html";
-};
+    if (!title || !slug) {
+      hubMsg.innerText = "Title and Slug are required.";
+      return;
+    }
 
+    if (!validSlug(slug)) {
+      hubMsg.innerText = "Slug only allowed: letters, numbers, - and _ (no spaces).";
+      return;
+    }
 
-init();
+    const payload = { user_id: user.id, title, slug, theme };
+
+    const { data, error } = await supabase
+      .from("hubs")
+      .upsert(payload, { onConflict: "slug" })
+      .select();
+
+    if (error) {
+      console.error("Save hub error FULL:", error);
+      hubMsg.innerText = "Failed to save hub: " + error.message;
+      return;
+    }
+
+    currentHub = data?.[0] || null;
+    hubMsg.innerText = "Hub saved successfully.";
+    setPublicButton(currentHub.slug);
+
+    await loadLinks();
+    await loadAnalyticsOverview();
+    await loadAnalyticsCards();
+  });
+
+  addLinkBtn.addEventListener("click", async () => {
+    linkMsg.innerText = "";
+
+    if (!currentHub) {
+      linkMsg.innerText = "Save your hub first.";
+      return;
+    }
+
+    const title = linkTitle.value.trim();
+    const url = linkUrl.value.trim();
+
+    if (!title || !url) {
+      linkMsg.innerText = "Title and URL are required.";
+      return;
+    }
+
+    const { error } = await supabase
+      .from("links")
+      .insert({
+        hub_id: currentHub.id,
+        title,
+        url,
+        is_active: true
+      });
+
+    if (error) {
+      console.error("Add link error:", error);
+      linkMsg.innerText = "Failed to add link: " + error.message;
+      return;
+    }
+
+    linkTitle.value = "";
+    linkUrl.value = "";
+    linkMsg.innerText = "Link saved.";
+
+    await loadLinks();
+    await loadAnalyticsOverview();
+    await loadAnalyticsCards();
+  });
+
+  // ------- LINKS + RULES -------
+  async function loadLinks() {
+    const linkList = document.getElementById("linkList");
+
+    if (!currentHub) {
+      linkList.innerHTML = "<p style='color:var(--muted)'>Save hub first.</p>";
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("links")
+      .select(`
+        id, hub_id, title, url, is_active, created_at,
+        rules ( id, rule_type, rule_value, priority )
+      `)
+      .eq("hub_id", currentHub.id)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Load links error:", error);
+      linkList.innerHTML = "<p style='color:var(--muted)'>Failed to load links.</p>";
+      return;
+    }
+
+    linkList.innerHTML = "";
+
+    if (!data || data.length === 0) {
+      linkList.innerHTML = "<p style='color:var(--muted)'>No links added yet.</p>";
+      return;
+    }
+
+    data.forEach(l => {
+      const div = document.createElement("div");
+      div.className = "link-item";
+
+      const existingRule = (l.rules && l.rules.length) ? l.rules[0] : null;
+
+      let existingType = existingRule?.rule_type || "";
+      let existingVal  = existingRule?.rule_value || "";
+      let existingPri  = existingRule?.priority ?? 0;
+
+      // For time value like "09:00-18:00"
+      let startTimeVal = "";
+      let endTimeVal = "";
+      if (existingType === "time" && existingVal.includes("-")) {
+        const parts = existingVal.split("-");
+        startTimeVal = parts[0] || "";
+        endTimeVal = parts[1] || "";
+      }
+
+      div.innerHTML = `
+        <div class="link-top">
+          <div class="link-info">
+            <h4>${escapeHtml(l.title || "")}</h4>
+            <p>${escapeHtml(l.url || "")}</p>
+          </div>
+          <button class="btn btn-red deleteBtn">Delete</button>
+        </div>
+
+        <div class="rule-box">
+          <div class="rule-row">
+            <select class="rtype inline">
+              <option value="">Select Rule</option>
+              <option value="time">Time</option>
+              <option value="device">Device</option>
+              <option value="country">Country</option>
+            </select>
+
+            <select class="deviceInput inline" style="display:none">
+              <option value="mobile">Mobile</option>
+              <option value="desktop">Desktop</option>
+            </select>
+
+            <select class="countryInput inline" style="display:none">
+              <option value="IN">India (IN)</option>
+              <option value="US">USA (US)</option>
+              <option value="GB">UK (GB)</option>
+              <option value="CA">Canada (CA)</option>
+              <option value="AU">Australia (AU)</option>
+            </select>
+
+            <input class="priorityInput inline" type="number" placeholder="Priority" value="${existingPri}">
+          </div>
+
+          <div class="time-range" style="margin-top:10px">
+            <input type="time" class="startTime" value="${startTimeVal}">
+            <input type="time" class="endTime" value="${endTimeVal}">
+          </div>
+
+          <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-green saveRuleBtn">Save Rule</button>
+            <button class="btn btn-red clearRuleBtn">Clear Rule</button>
+          </div>
+
+          <p class="ruleMsg" style="color:var(--muted); margin:10px 0 0;"></p>
+        </div>
+      `;
+
+      const deleteBtn = div.querySelector(".deleteBtn");
+      const rtype = div.querySelector(".rtype");
+      const deviceInput = div.querySelector(".deviceInput");
+      const countryInput = div.querySelector(".countryInput");
+      const timeRange = div.querySelector(".time-range");
+      const startTime = div.querySelector(".startTime");
+      const endTime = div.querySelector(".endTime");
+      const priorityInput = div.querySelector(".priorityInput");
+      const saveRuleBtn = div.querySelector(".saveRuleBtn");
+      const clearRuleBtn = div.querySelector(".clearRuleBtn");
+      const ruleMsg = div.querySelector(".ruleMsg");
+
+      // set existing selection
+      if (existingType) rtype.value = existingType;
+
+      function syncRuleUI() {
+        deviceInput.style.display = "none";
+        countryInput.style.display = "none";
+        timeRange.style.display = "none";
+
+        if (rtype.value === "device") deviceInput.style.display = "block";
+        if (rtype.value === "country") countryInput.style.display = "block";
+        if (rtype.value === "time") timeRange.style.display = "flex";
+      }
+
+      syncRuleUI();
+
+      // set existing values in dropdowns
+      if (existingType === "device") deviceInput.value = existingVal || "mobile";
+      if (existingType === "country") countryInput.value = existingVal || "IN";
+
+      rtype.addEventListener("change", () => {
+        ruleMsg.innerText = "";
+        syncRuleUI();
+      });
+
+      deleteBtn.addEventListener("click", async () => {
+        await supabase.from("links").delete().eq("id", l.id);
+        await loadLinks();
+        await loadAnalyticsOverview();
+        await loadAnalyticsCards();
+      });
+
+      // SAVE RULE
+      saveRuleBtn.addEventListener("click", async () => {
+        ruleMsg.innerText = "";
+
+        const type = rtype.value;
+        const pri = Number(priorityInput.value || 0);
+
+        if (!type) {
+          ruleMsg.innerText = "Please select a rule type.";
+          return;
+        }
+
+        let val = "";
+
+        if (type === "time") {
+          // ✅ Both Start & End required
+          const s = (startTime.value || "").trim();
+          const e = (endTime.value || "").trim();
+
+          if (!s || !e) {
+            ruleMsg.innerText = "Select BOTH Start Time and End Time.";
+            return;
+          }
+
+          val = `${s}-${e}`; // ✅ correct format
+        }
+
+        if (type === "device") {
+          val = deviceInput.value; // mobile/desktop
+        }
+
+        if (type === "country") {
+          val = countryInput.value; // IN/US/...
+        }
+
+        // Remove old rule rows for this link (keep only one rule per link for now)
+        await supabase.from("rules").delete().eq("link_id", l.id);
+
+        // Insert new rule
+        const { error } = await supabase.from("rules").insert({
+          link_id: l.id,
+          rule_type: type,
+          rule_value: val,
+          priority: pri
+        });
+
+        if (error) {
+          console.error("Save rule error:", error);
+          ruleMsg.innerText = "Failed to save rule: " + error.message;
+          return;
+        }
+
+        ruleMsg.innerText = "Rule saved ✅";
+      });
+
+      // CLEAR RULE
+      clearRuleBtn.addEventListener("click", async () => {
+        ruleMsg.innerText = "";
+
+        const { error } = await supabase.from("rules").delete().eq("link_id", l.id);
+
+        if (error) {
+          console.error("Clear rule error:", error);
+          ruleMsg.innerText = "Failed to clear rule: " + error.message;
+          return;
+        }
+
+        // reset UI
+        rtype.value = "";
+        deviceInput.value = "mobile";
+        countryInput.value = "IN";
+        startTime.value = "";
+        endTime.value = "";
+        priorityInput.value = 0;
+        syncRuleUI();
+
+        ruleMsg.innerText = "Rule cleared ✅";
+      });
+
+      linkList.appendChild(div);
+    });
+  }
+
+  // ------- ANALYTICS OVERVIEW -------
+  async function loadAnalyticsOverview() {
+    if (!currentHub) return;
+
+    const { data: visits } = await supabase
+      .from("hub_visits")
+      .select("id")
+      .eq("hub_id", currentHub.id);
+
+    document.getElementById("totalVisits").innerText = visits?.length || 0;
+
+    const { data: clicks, error } = await supabase
+      .from("click_events")
+      .select(`id, links ( title, hub_id )`);
+
+    if (error) {
+      console.error("Analytics error:", error);
+      document.getElementById("totalClicks").innerText = "0";
+      document.getElementById("topLink").innerText = "—";
+      return;
+    }
+
+    const filtered = (clicks || []).filter(c => c.links?.hub_id === currentHub.id);
+    document.getElementById("totalClicks").innerText = String(filtered.length);
+
+    const map = {};
+    filtered.forEach(c => {
+      const t = c.links?.title || "Unknown";
+      map[t] = (map[t] || 0) + 1;
+    });
+
+    let top = "—";
+    let max = 0;
+    for (const [t, cnt] of Object.entries(map)) {
+      if (cnt > max) { max = cnt; top = t; }
+    }
+    document.getElementById("topLink").innerText = top;
+  }
+
+  // ------- ANALYTICS CARDS -------
+  async function loadAnalyticsCards() {
+    const container = document.getElementById("analytics");
+    if (!container) return;
+
+    if (!currentHub) {
+      container.innerText = "Save hub first.";
+      return;
+    }
+
+    const { data: clicks, error } = await supabase
+      .from("click_events")
+      .select(`id, clicked_at, links ( title, hub_id )`)
+      .order("clicked_at", { ascending: false });
+
+    if (error) {
+      console.error("Cards analytics error:", error);
+      container.innerText = "Failed to load analytics";
+      return;
+    }
+
+    const filtered = (clicks || []).filter(c => c.links?.hub_id === currentHub.id);
+
+    if (!filtered.length) {
+      container.innerText = "No clicks yet";
+      return;
+    }
+
+    const stats = {};
+    filtered.forEach(c => {
+      const title = c.links?.title || "Unknown Link";
+      stats[title] = (stats[title] || 0) + 1;
+    });
+
+    container.innerHTML = "";
+    Object.entries(stats).forEach(([title, count]) => {
+      const div = document.createElement("div");
+      div.style.cssText =
+        "background:#050505;border:1px solid #111;border-radius:12px;padding:14px;margin-bottom:10px;";
+      div.innerHTML =
+        `<strong style="color:var(--green)">${escapeHtml(title)}</strong>
+         <p style="color:var(--muted);margin:6px 0 0">Total Clicks: ${count}</p>`;
+      container.appendChild(div);
+    });
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  logoutBtn.addEventListener("click", async () => {
+    await supabase.auth.signOut();
+    location.href = "index.html";
+  });
+
+  init();
 </script>
 
 </body>
