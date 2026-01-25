@@ -70,7 +70,7 @@ Share your public hub link
 
 Track analytics from dashboard
 
-
+#IMP - If mail limit exceeded msg occur when signup process check EMERGENCY FILE INSIDE DOCUMENTATION FOLDER
 👥 Team Information
 
 Team Name: CodeWarriors (Hackathon Project, 2026)
