@@ -1,3 +1,4 @@
+#IMP - If mail limit exceeded msg occur when signup process check EMERGENCY FILE INSIDE DOCUMENTATION FOLDER(ITS NOT AN ERROR)
 📌 Smart Link Hub
 
 Smart Link Hub is a Linktree-like web application that allows users to organize, manage, and share multiple links through a single public hub page. It also provides analytics and rule-based link display to improve link visibility and performance.
@@ -70,7 +71,7 @@ Share your public hub link
 
 Track analytics from dashboard
 
-#IMP - If mail limit exceeded msg occur when signup process check EMERGENCY FILE INSIDE DOCUMENTATION FOLDER
+
 
 
 👥 Team Information
